@@ -193654,7 +193654,7 @@ module.exports = {
       return axe;
     });
   }
-  if (( false ? 0 : _typeof(module)) === 'object' && module.exports && typeof axeFunction.toString === 'function') {
+  if (typeof module === 'object' && module.exports && typeof axeFunction.toString === 'function') {
     axe.source = '(' + axeFunction.toString() + ')(typeof window === "object" ? window : this);';
     module.exports = axe;
   }
