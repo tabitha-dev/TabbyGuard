@@ -157,6 +157,15 @@ let template = await fs.readFile(vendorBasePath, "utf8");
 template = template.replace(/\r\n/g, "\n");
 template = template.replace(/^require\('\.\/sourcemap-register\.js'\);/m, "");
 
+// ncc rewrites `typeof module` inside axe-core's self-serialized browser source.
+// That transformed expression references `module` when the source is injected into
+// a real page, where CommonJS globals do not exist. Restore the safe typeof check
+// in the vendored runtime so bundled accessibility scans work outside source tests.
+template = template.replace(
+  /\(\s*false\s*\?\s*0\s*:\s*_typeof\(module\)\s*\)/g,
+  "typeof module",
+);
+
 const browsersJson = {
   browsers: [
     {
