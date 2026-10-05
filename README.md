@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run TabbyGuard
-        uses: tabitha-dev/tabbyguard@v2
+        uses: tabitha-dev/TabbyGuard@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           preview-url: ${{ env.PREVIEW_URL }}
@@ -94,7 +94,7 @@ TabbyGuard defaults to deterministic mode, uses the Chrome installation availabl
 
 ```yaml
 - name: Run TabbyGuard
-  uses: tabitha-dev/tabbyguard@v2
+  uses: tabitha-dev/TabbyGuard@v2
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     preview-url: ${{ env.PREVIEW_URL }}
@@ -106,7 +106,7 @@ TabbyGuard defaults to deterministic mode, uses the Chrome installation availabl
 
 ```yaml
 - name: Run TabbyGuard
-  uses: tabitha-dev/tabbyguard@v2
+  uses: tabitha-dev/TabbyGuard@v2
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     preview-url: ${{ env.PREVIEW_URL }}
@@ -445,7 +445,7 @@ Other CI steps can respond to the result without parsing Markdown.
 ```yaml
 - name: Run TabbyGuard
   id: qa
-  uses: tabitha-dev/tabbyguard@v2
+  uses: tabitha-dev/TabbyGuard@v2
   with:
     github-token: ${{ secrets.GITHUB_TOKEN }}
     preview-url: ${{ env.PREVIEW_URL }}

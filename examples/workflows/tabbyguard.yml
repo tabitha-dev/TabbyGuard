@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run TabbyGuard
-        uses: tabitha-dev/tabbyguard@v2
+        uses: tabitha-dev/TabbyGuard@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           preview-url: ${{ vars.PREVIEW_URL }}
