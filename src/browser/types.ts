@@ -64,4 +64,5 @@ export type BrowserRunOptions = {
   artifactDir: string;
   testPlan: TestPlanItem[];
   browserChannel: string;
+  screenshotMode: "failures" | "all" | "none";
 };

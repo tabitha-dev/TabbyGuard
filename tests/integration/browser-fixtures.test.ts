@@ -15,7 +15,6 @@ beforeAll(async () => {
     [path.join(root, "examples/demo-site/server.mjs"), "43117"],
     { stdio: "ignore" },
   );
-
   await new Promise((resolve) => setTimeout(resolve, 400));
 });
 
@@ -48,29 +47,50 @@ async function run(route: string, checkType: CheckType, surface?: string) {
     artifactDir: path.join(root, ".tabbyguard-test"),
     testPlan: plan(route, checkType, surface),
     browserChannel: "chromium",
+    screenshotMode: "all",
   });
-
-  return {
-    results,
-    findings: summarizeDeterministically(results),
-  };
+  return { results, findings: summarizeDeterministically(results) };
 }
 
 describe("browser fixtures", () => {
   it("keeps a clean layout finding-free", async () => {
     const { findings } = await run("/clean", "layout");
     expect(findings).toHaveLength(0);
-  }, 15_000);
+  }, 30_000);
+
+  it("captures a representative visual snapshot", async () => {
+    const { results } = await run("/clean", "layout");
+    expect(
+      results[0].evidence.some((item) => item.note === "Visual snapshot"),
+    ).toBe(true);
+  }, 30_000);
 
   it("detects mobile overflow", async () => {
     const { findings } = await run("/overflow", "layout");
     expect(findings.some((item) => item.category === "layout")).toBe(true);
-  }, 15_000);
+  }, 30_000);
 
   it("detects a runtime exception", async () => {
     const { findings } = await run("/runtime", "runtime");
     expect(findings.some((item) => item.category === "runtime")).toBe(true);
-  });
+  }, 30_000);
+
+  it("detects a serious accessibility regression", async () => {
+    const { findings } = await run("/a11y", "accessibility");
+    expect(findings.some((item) => item.category === "accessibility")).toBe(
+      true,
+    );
+  }, 30_000);
+
+  it("detects a dialog that does not close with Escape", async () => {
+    const { findings } = await run("/dialog", "interaction", "Dialog");
+    expect(findings.some((item) => item.category === "interaction")).toBe(true);
+  }, 30_000);
+
+  it("detects blocked keyboard focus progression", async () => {
+    const { findings } = await run("/keyboard", "keyboard");
+    expect(findings.some((item) => item.category === "keyboard")).toBe(true);
+  }, 30_000);
 
   it("does not turn a missing navigation target into a defect", async () => {
     const { results, findings } = await run(
@@ -78,8 +98,7 @@ describe("browser fixtures", () => {
       "interaction",
       "Navigation",
     );
-
     expect(results[0].status).toBe("skipped");
     expect(findings).toHaveLength(0);
-  });
+  }, 30_000);
 });

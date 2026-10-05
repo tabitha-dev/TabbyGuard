@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // GENERATED DEPENDENCY RUNTIME for TabbyGuard. Contains only reachable third-party modules from the pinned V1 dependency bundle.
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
@@ -230409,11 +230410,105 @@ module.exports = Agent
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runAction = runAction;
+const core = __importStar(__nccwpck_require__(7484));
+const node_path_1 = __importDefault(require("node:path"));
+const run_js_1 = __nccwpck_require__(99011);
+const pr_context_js_1 = __nccwpck_require__(99014);
+const counts_js_1 = __nccwpck_require__(99016);
+const input_js_1 = __nccwpck_require__(99028);
+async function runAction() {
+    const githubToken = (0, input_js_1.readInput)("github-token", true);
+    const previewUrl = (0, input_js_1.readInput)("preview-url", true);
+    new URL(previewUrl);
+    const context = (0, pr_context_js_1.getCurrentPrContext)(previewUrl);
+    const client = (0, pr_context_js_1.getOctokit)(githubToken);
+    const changedFiles = await (0, pr_context_js_1.getChangedFiles)(client, context);
+    const artifactDir = node_path_1.default.resolve((0, input_js_1.readInput)("artifact-dir") || ".tabbyguard");
+    const mode = (0, input_js_1.readMode)();
+    const openaiApiKey = (0, input_js_1.readInput)("openai-api-key");
+    if (mode === "assisted" && !openaiApiKey) {
+        core.warning("mode=assisted was requested without openai-api-key. TabbyGuard will use deterministic planning.");
+    }
+    core.info(`TabbyGuard is testing ${previewUrl}`);
+    const run = await (0, run_js_1.runTabbyGuard)({
+        context,
+        changedFiles,
+        routes: (0, input_js_1.readRoutes)(),
+        maxChecks: (0, input_js_1.readMaxChecks)(),
+        mode,
+        failOnSeverity: (0, input_js_1.readFailOnSeverity)(),
+        openaiApiKey,
+        model: (0, input_js_1.readInput)("openai-model") || "gpt-5.6-terra",
+        artifactDir,
+        browserChannel: (0, input_js_1.readInput)("browser-channel") || "chrome",
+        screenshotMode: (0, input_js_1.readScreenshotMode)(),
+    });
+    const findingCounts = (0, counts_js_1.countFindings)(run.summary.findings);
+    core.setOutput("result", run.summary.result);
+    core.setOutput("findings-count", run.summary.findings.length.toString());
+    core.setOutput("critical-count", findingCounts.critical.toString());
+    core.setOutput("high-count", findingCounts.high.toString());
+    core.setOutput("medium-count", findingCounts.medium.toString());
+    core.setOutput("low-count", findingCounts.low.toString());
+    core.setOutput("run-summary", run.runSummaryPath);
+    core.setOutput("report-path", run.reportPath);
+    core.setOutput("evidence-path", artifactDir);
+    if (run.failed) {
+        core.setFailed(`TabbyGuard found ${run.summary.findings.length} evidence-backed finding(s) at or above fail-on-severity=${run.summary.failOnSeverity}.`);
+    }
+    else {
+        core.info(`TabbyGuard result: ${run.summary.result}. ${run.summary.findings.length} evidence-backed finding(s).`);
+    }
+}
+
+/***/ }),
+/***/ 99001:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAssistedPlan = createAssistedPlan;
 exports.enrichFindings = enrichFindings;
-const test_plan_js_1 = __nccwpck_require__(99021);
-const fs_js_1 = __nccwpck_require__(99022);
+const test_plan_js_1 = __nccwpck_require__(99026);
+const fs_js_1 = __nccwpck_require__(99027);
 const planJsonSchema = {
     type: "object",
     additionalProperties: false,
@@ -230585,7 +230680,7 @@ async function enrichFindings(options) {
 }
 
 /***/ }),
-/***/ 99001:
+/***/ 99002:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -230606,13 +230701,13 @@ async function runA11yScan(page) {
 }
 
 /***/ }),
-/***/ 99002:
+/***/ 99003:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runInteractionProbe = runInteractionProbe;
-const selector_js_1 = __nccwpck_require__(99006);
+const selector_js_1 = __nccwpck_require__(99007);
 const MENU_SELECTORS = [
     'button[aria-label*="menu" i]',
     'button[aria-label*="navigation" i]',
@@ -230795,13 +230890,13 @@ async function runInteractionProbe(page, item) {
 }
 
 /***/ }),
-/***/ 99003:
+/***/ 99004:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runKeyboardProbe = runKeyboardProbe;
-const selector_js_1 = __nccwpck_require__(99006);
+const selector_js_1 = __nccwpck_require__(99007);
 async function visibleFocusableCount(page) {
     return page.evaluate(() => {
         const selector = 'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -230849,7 +230944,7 @@ async function runKeyboardProbe(page) {
 }
 
 /***/ }),
-/***/ 99004:
+/***/ 99005:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -230898,7 +230993,7 @@ async function inspectLayout(page) {
 }
 
 /***/ }),
-/***/ 99005:
+/***/ 99006:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -230910,30 +231005,50 @@ exports.runBrowserChecks = runBrowserChecks;
 const promises_1 = __importDefault(require("node:fs/promises"));
 const node_path_1 = __importDefault(require("node:path"));
 const playwright_core_1 = __nccwpck_require__(3219);
-const test_plan_js_1 = __nccwpck_require__(99021);
-const fs_js_1 = __nccwpck_require__(99022);
-const a11y_js_1 = __nccwpck_require__(99001);
-const interaction_js_1 = __nccwpck_require__(99002);
-const keyboard_js_1 = __nccwpck_require__(99003);
-const layout_js_1 = __nccwpck_require__(99004);
-const url_js_1 = __nccwpck_require__(99008);
+const test_plan_js_1 = __nccwpck_require__(99026);
+const fs_js_1 = __nccwpck_require__(99027);
+const a11y_js_1 = __nccwpck_require__(99002);
+const interaction_js_1 = __nccwpck_require__(99003);
+const keyboard_js_1 = __nccwpck_require__(99004);
+const layout_js_1 = __nccwpck_require__(99005);
+const url_js_1 = __nccwpck_require__(99009);
 async function ensureRunnerDirs(artifactDir) {
-    await Promise.all(["screenshots", "traces", "logs", "a11y"].map((name) => promises_1.default.mkdir(node_path_1.default.join(artifactDir, name), { recursive: true })));
+    await Promise.all(["screenshots", "snapshots", "traces", "logs", "a11y"].map((name) => promises_1.default.mkdir(node_path_1.default.join(artifactDir, name), { recursive: true })));
+}
+function localBrowserCandidates() {
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    const localAppData = process.env.LOCALAPPDATA || "";
+    const programFiles = process.env.PROGRAMFILES || "";
+    const programFilesX86 = process.env["PROGRAMFILES(X86)"] || "";
+    return [
+        process.env.CHROME_PATH,
+        process.env.CHROMIUM_PATH,
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        home
+            ? node_path_1.default.join(home, "Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+            : "",
+        localAppData
+            ? node_path_1.default.join(localAppData, "Google/Chrome/Application/chrome.exe")
+            : "",
+        programFiles
+            ? node_path_1.default.join(programFiles, "Google/Chrome/Application/chrome.exe")
+            : "",
+        programFilesX86
+            ? node_path_1.default.join(programFilesX86, "Google/Chrome/Application/chrome.exe")
+            : "",
+    ].filter((value) => Boolean(value));
 }
 async function launchBrowser(channel) {
     try {
         return await playwright_core_1.chromium.launch({ headless: true, channel });
     }
     catch (channelError) {
-        const candidates = [
-            process.env.CHROME_PATH,
-            process.env.CHROMIUM_PATH,
-            "/usr/bin/google-chrome",
-            "/usr/bin/google-chrome-stable",
-            "/usr/bin/chromium",
-            "/usr/bin/chromium-browser",
-        ].filter((value) => Boolean(value));
-        for (const executablePath of candidates) {
+        for (const executablePath of localBrowserCandidates()) {
             try {
                 await promises_1.default.access(executablePath);
                 return await playwright_core_1.chromium.launch({ headless: true, executablePath });
@@ -230942,8 +231057,7 @@ async function launchBrowser(channel) {
                 // Try the next installed browser path.
             }
         }
-        throw new Error(`TabbyGuard could not launch browser channel "${channel}". GitHub-hosted Ubuntu runners include Chrome. ` +
-            `On a self-hosted runner, install Chrome/Chromium or set CHROME_PATH/CHROMIUM_PATH. ` +
+        throw new Error(`TabbyGuard could not launch browser channel "${channel}". Install Chrome/Chromium or set CHROME_PATH/CHROMIUM_PATH. ` +
             `Original error: ${channelError instanceof Error ? channelError.message : String(channelError)}`);
     }
 }
@@ -230980,20 +231094,31 @@ function statusForCheck(result) {
             return result.keyboard?.status ?? "inconclusive";
     }
 }
+function posixPath(...parts) {
+    return node_path_1.default.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
+}
 async function runBrowserChecks(options) {
     await ensureRunnerDirs(options.artifactDir);
     const browser = await launchBrowser(options.browserChannel);
     const results = [];
+    const capturedSnapshots = new Set();
     try {
         for (const item of options.testPlan) {
             const started = Date.now();
             const url = (0, url_js_1.resolveTargetUrl)(options.previewUrl, item.route);
             const size = (0, test_plan_js_1.viewportSize)(item.viewport);
             const slug = (0, fs_js_1.slugify)(`${item.id}-${item.viewport}-${item.checkType}`);
-            const tracePath = node_path_1.default.join(options.artifactDir, "traces", `${slug}.zip`);
-            const screenshotPath = node_path_1.default.join(options.artifactDir, "screenshots", `${slug}.png`);
-            const logPath = node_path_1.default.join(options.artifactDir, "logs", `${slug}.json`);
-            const a11yPath = node_path_1.default.join(options.artifactDir, "a11y", `${slug}.json`);
+            const traceRel = posixPath("traces", `${slug}.zip`);
+            const screenshotRel = posixPath("screenshots", `${slug}.png`);
+            const logRel = posixPath("logs", `${slug}.json`);
+            const a11yRel = posixPath("a11y", `${slug}.json`);
+            const snapshotKey = `${item.route ?? "/"}:${item.viewport}`;
+            const snapshotRel = posixPath("snapshots", `${(0, fs_js_1.slugify)(`${item.route ?? "home"}-${item.viewport}`)}.png`);
+            const tracePath = node_path_1.default.join(options.artifactDir, traceRel);
+            const screenshotPath = node_path_1.default.join(options.artifactDir, screenshotRel);
+            const logPath = node_path_1.default.join(options.artifactDir, logRel);
+            const a11yPath = node_path_1.default.join(options.artifactDir, a11yRel);
+            const snapshotPath = node_path_1.default.join(options.artifactDir, snapshotRel);
             const consoleMessages = [];
             const pageErrors = [];
             const networkFailures = [];
@@ -231031,8 +231156,9 @@ async function runBrowserChecks(options) {
                 });
             });
             page.on("response", (response) => {
-                if (response.status() < 500 || !isFirstParty(response.url(), url))
+                if (response.status() < 500 || !isFirstParty(response.url(), url)) {
                     return;
+                }
                 networkFailures.push({
                     url: response.url(),
                     method: response.request().method(),
@@ -231050,12 +231176,27 @@ async function runBrowserChecks(options) {
                 catch {
                     notes.push("Network did not become idle within 4 seconds; checks continued.");
                 }
+                if (options.screenshotMode === "all" &&
+                    !capturedSnapshots.has(snapshotKey)) {
+                    try {
+                        await page.screenshot({ path: snapshotPath, fullPage: true });
+                        capturedSnapshots.add(snapshotKey);
+                        evidence.push({
+                            type: "screenshot",
+                            localPath: snapshotRel,
+                            note: "Visual snapshot",
+                        });
+                    }
+                    catch {
+                        notes.push("Visual snapshot could not be captured.");
+                    }
+                }
                 if (item.checkType === "accessibility") {
                     axeViolations = await (0, a11y_js_1.runA11yScan)(page);
                     await (0, fs_js_1.writeJson)(a11yPath, axeViolations);
                     evidence.push({
                         type: "json",
-                        localPath: a11yPath,
+                        localPath: a11yRel,
                         note: "Axe accessibility scan",
                     });
                 }
@@ -231081,11 +231222,11 @@ async function runBrowserChecks(options) {
                     notes,
                 };
                 status = statusForCheck(rawWithoutStatus);
-                if (status === "failed") {
+                if (status === "failed" && options.screenshotMode !== "none") {
                     await page.screenshot({ path: screenshotPath, fullPage: true });
                     evidence.push({
                         type: "screenshot",
-                        localPath: screenshotPath,
+                        localPath: screenshotRel,
                         note: `${item.viewport} failure evidence`,
                     });
                 }
@@ -231093,20 +231234,25 @@ async function runBrowserChecks(options) {
             catch (error) {
                 status = "failed";
                 pageErrors.push(error instanceof Error ? error.message : String(error));
-                await page
-                    .screenshot({ path: screenshotPath, fullPage: true })
-                    .catch(() => undefined);
-                evidence.push({
-                    type: "screenshot",
-                    localPath: screenshotPath,
-                    note: "Navigation or check failure evidence",
-                });
+                if (options.screenshotMode !== "none") {
+                    try {
+                        await page.screenshot({ path: screenshotPath, fullPage: true });
+                        evidence.push({
+                            type: "screenshot",
+                            localPath: screenshotRel,
+                            note: "Navigation or check failure evidence",
+                        });
+                    }
+                    catch {
+                        notes.push("Failure screenshot could not be captured.");
+                    }
+                }
             }
             finally {
                 await context.tracing.stop({ path: tracePath }).catch(() => undefined);
                 evidence.push({
                     type: "trace",
-                    localPath: tracePath,
+                    localPath: traceRel,
                     note: "Playwright trace",
                 });
                 const raw = {
@@ -231125,7 +231271,7 @@ async function runBrowserChecks(options) {
                 await (0, fs_js_1.writeJson)(logPath, raw);
                 evidence.push({
                     type: "log",
-                    localPath: logPath,
+                    localPath: logRel,
                     note: "Raw browser check log",
                 });
                 await context.close().catch(() => undefined);
@@ -231154,7 +231300,7 @@ async function runBrowserChecks(options) {
 }
 
 /***/ }),
-/***/ 99006:
+/***/ 99007:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231178,14 +231324,14 @@ async function describeActiveElement(page) {
 }
 
 /***/ }),
-/***/ 99007:
+/***/ 99008:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
 /***/ }),
-/***/ 99008:
+/***/ 99009:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231207,7 +231353,335 @@ function resolveTargetUrl(previewUrl, route) {
 }
 
 /***/ }),
-/***/ 99009:
+/***/ 99010:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runCli = runCli;
+const node_path_1 = __importDefault(require("node:path"));
+const node_child_process_1 = require("node:child_process");
+const run_js_1 = __nccwpck_require__(99011);
+function usage() {
+    return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help                            Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
+}
+function valueAfter(args, name) {
+    const index = args.indexOf(name);
+    return index >= 0 ? args[index + 1] : undefined;
+}
+function parseSeverity(value) {
+    if (!["none", "critical", "high", "medium", "low"].includes(value)) {
+        throw new Error("--fail-on-severity must be none, critical, high, medium, or low");
+    }
+    return value;
+}
+function parseScreenshotMode(value) {
+    if (!["all", "failures", "none"].includes(value)) {
+        throw new Error("--screenshot-mode must be all, failures, or none");
+    }
+    return value;
+}
+function parseMaxChecks(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 24) {
+        throw new Error("--max-checks must be an integer from 1 to 24");
+    }
+    return parsed;
+}
+function openFile(filePath) {
+    const platform = process.platform;
+    try {
+        if (platform === "win32") {
+            (0, node_child_process_1.spawn)("cmd", ["/c", "start", "", filePath], {
+                detached: true,
+                stdio: "ignore",
+            }).unref();
+        }
+        else if (platform === "darwin") {
+            (0, node_child_process_1.spawn)("open", [filePath], { detached: true, stdio: "ignore" }).unref();
+        }
+        else {
+            (0, node_child_process_1.spawn)("xdg-open", [filePath], {
+                detached: true,
+                stdio: "ignore",
+            }).unref();
+        }
+    }
+    catch {
+        // The printed report path remains available if the OS opener is unavailable.
+    }
+}
+async function runCli() {
+    const args = process.argv.slice(2);
+    if (args.includes("--help") || args.length === 0) {
+        process.stdout.write(usage());
+        return;
+    }
+    const urlArg = args.find((arg) => !arg.startsWith("--"));
+    if (!urlArg)
+        throw new Error("A URL is required.\n\n" + usage());
+    const parsedUrl = new URL(urlArg);
+    const previewUrl = parsedUrl.origin;
+    const routeArg = valueAfter(args, "--routes");
+    const routes = (routeArg || `${parsedUrl.pathname}${parsedUrl.search}` || "/")
+        .split(",")
+        .map((route) => route.trim())
+        .filter(Boolean);
+    const mode = (valueAfter(args, "--mode") || "deterministic");
+    if (mode !== "deterministic" && mode !== "assisted") {
+        throw new Error("--mode must be deterministic or assisted");
+    }
+    const artifactDir = node_path_1.default.resolve(valueAfter(args, "--artifact-dir") || ".tabbyguard");
+    process.stdout.write(`\nTabbyGuard\n${parsedUrl.toString()}\n\nRunning browser checks...\n`);
+    const run = await (0, run_js_1.runTabbyGuard)({
+        context: { kind: "standalone", previewUrl },
+        changedFiles: [],
+        routes,
+        maxChecks: parseMaxChecks(valueAfter(args, "--max-checks") || "16"),
+        mode,
+        failOnSeverity: parseSeverity(valueAfter(args, "--fail-on-severity") || "high"),
+        openaiApiKey: process.env.OPENAI_API_KEY,
+        model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
+        artifactDir,
+        browserChannel: valueAfter(args, "--browser-channel") || "chrome",
+        screenshotMode: parseScreenshotMode(valueAfter(args, "--screenshot-mode") || "all"),
+    });
+    const counts = run.summary.findingCounts;
+    process.stdout.write(`\n${run.summary.result.toUpperCase()} · ${run.summary.findings.length} finding${run.summary.findings.length === 1 ? "" : "s"}\n` +
+        `${counts.critical} critical · ${counts.high} high · ${counts.medium} medium · ${counts.low} low\n` +
+        `${run.summary.checkCounts.passed} passed · ${run.summary.checkCounts.failed} failed · ${run.summary.checkCounts.skipped} skipped · ${run.summary.checkCounts.inconclusive} inconclusive\n\n` +
+        `Visual report: ${run.reportPath}\n` +
+        `Evidence: ${artifactDir}\n\n`);
+    if (args.includes("--open"))
+        openFile(run.reportPath);
+    if (run.failed)
+        process.exitCode = 1;
+}
+
+/***/ }),
+/***/ 99011:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runTabbyGuard = runTabbyGuard;
+const node_path_1 = __importDefault(require("node:path"));
+const openai_js_1 = __nccwpck_require__(99001);
+const run_check_js_1 = __nccwpck_require__(99006);
+const counts_js_1 = __nccwpck_require__(99016);
+const findings_js_1 = __nccwpck_require__(99017);
+const html_js_1 = __nccwpck_require__(99018);
+const mapper_js_1 = __nccwpck_require__(99021);
+const fs_js_1 = __nccwpck_require__(99027);
+const severity_js_1 = __nccwpck_require__(99029);
+const promises_1 = __importDefault(require("node:fs/promises"));
+function serializeCheck(result) {
+    return {
+        id: result.item.id,
+        targetSurface: result.item.targetSurface,
+        route: result.item.route ?? "/",
+        url: result.url,
+        viewport: result.item.viewport,
+        checkType: result.item.checkType,
+        status: result.status,
+        durationMs: result.durationMs,
+        reason: result.item.reason,
+        changedFiles: result.item.changedFiles,
+        notes: result.notes,
+        evidence: result.evidence,
+    };
+}
+function collectSnapshots(results) {
+    const seen = new Set();
+    const snapshots = [];
+    for (const result of results) {
+        for (const evidence of result.evidence) {
+            if (evidence.type !== "screenshot" ||
+                evidence.note !== "Visual snapshot") {
+                continue;
+            }
+            const route = result.item.route ?? "/";
+            const key = `${route}:${result.item.viewport}`;
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            snapshots.push({
+                route,
+                url: result.url,
+                viewport: result.item.viewport,
+                path: evidence.localPath,
+            });
+        }
+    }
+    return snapshots;
+}
+async function runTabbyGuard(options) {
+    const started = Date.now();
+    const changedFiles = options.changedFiles ?? [];
+    await (0, fs_js_1.ensureDir)(options.artifactDir);
+    const fallbackPlan = options.context.kind === "standalone"
+        ? (0, mapper_js_1.createStandalonePlan)(options.routes, options.maxChecks)
+        : (0, mapper_js_1.createDeterministicPlan)(changedFiles, options.routes, options.maxChecks);
+    let testPlan = fallbackPlan;
+    let modelUsed = "none";
+    if (options.mode === "assisted" && options.openaiApiKey) {
+        try {
+            testPlan = await (0, openai_js_1.createAssistedPlan)({
+                apiKey: options.openaiApiKey,
+                model: options.model,
+                changedFiles,
+                routes: options.routes,
+                fallbackPlan,
+                maxChecks: options.maxChecks,
+            });
+            modelUsed = options.model;
+        }
+        catch {
+            testPlan = fallbackPlan;
+        }
+    }
+    const browserResults = await (0, run_check_js_1.runBrowserChecks)({
+        previewUrl: options.context.previewUrl,
+        artifactDir: options.artifactDir,
+        testPlan,
+        browserChannel: options.browserChannel,
+        screenshotMode: options.screenshotMode,
+    });
+    let findings = (0, findings_js_1.summarizeDeterministically)(browserResults);
+    if (options.mode === "assisted" &&
+        options.openaiApiKey &&
+        findings.length > 0) {
+        try {
+            findings = await (0, openai_js_1.enrichFindings)({
+                apiKey: options.openaiApiKey,
+                model: options.model,
+                findings,
+                changedFiles,
+            });
+            modelUsed = options.model;
+        }
+        catch {
+            // Evidence-backed deterministic findings remain authoritative.
+        }
+    }
+    const findingCounts = (0, counts_js_1.countFindings)(findings);
+    const failed = (0, severity_js_1.shouldFail)(findings, options.failOnSeverity);
+    const result = failed ? "fail" : findings.length > 0 ? "warn" : "pass";
+    const summary = {
+        schemaVersion: 3,
+        context: options.context,
+        result,
+        failOnSeverity: options.failOnSeverity,
+        mode: options.mode,
+        modelUsed,
+        durationMs: Date.now() - started,
+        changedFiles,
+        testPlan,
+        checks: browserResults.map(serializeCheck),
+        snapshots: collectSnapshots(browserResults),
+        findings,
+        findingCounts,
+        checkCounts: (0, counts_js_1.countChecks)(browserResults),
+        generatedAt: new Date().toISOString(),
+    };
+    const runSummaryPath = node_path_1.default.join(options.artifactDir, "run_summary.json");
+    const reportPath = node_path_1.default.join(options.artifactDir, "report.html");
+    await (0, fs_js_1.writeJson)(runSummaryPath, summary);
+    await promises_1.default.writeFile(reportPath, (0, html_js_1.renderHtmlReport)(summary), "utf8");
+    return { summary, runSummaryPath, reportPath, failed };
+}
+
+/***/ }),
+/***/ 99012:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.finalizeAction = finalizeAction;
+const promises_1 = __importDefault(require("node:fs/promises"));
+const core = __importStar(__nccwpck_require__(7484));
+const pr_context_js_1 = __nccwpck_require__(99014);
+const pr_comment_js_1 = __nccwpck_require__(99013);
+const markdown_js_1 = __nccwpck_require__(99019);
+const step_summary_js_1 = __nccwpck_require__(99020);
+const run_summary_js_1 = __nccwpck_require__(99025);
+const input_js_1 = __nccwpck_require__(99028);
+function emitAnnotations(summary) {
+    for (const finding of summary.findings.slice(0, 12)) {
+        const message = `${finding.title}: ${finding.summary}`;
+        const properties = {
+            title: `TabbyGuard · ${finding.severity.toUpperCase()} · ${finding.category}`,
+        };
+        if (finding.severity === "critical" || finding.severity === "high") {
+            core.error(message, properties);
+        }
+        else {
+            core.warning(message, properties);
+        }
+    }
+}
+async function finalizeAction() {
+    const summaryPath = (0, input_js_1.readInput)("run-summary", true);
+    const artifactUrl = (0, input_js_1.readInput)("artifact-url");
+    const githubToken = (0, input_js_1.readInput)("github-token");
+    const postComment = (0, input_js_1.readBoolean)("post-comment", true);
+    const raw = JSON.parse(await promises_1.default.readFile(summaryPath, "utf8"));
+    const summary = run_summary_js_1.RunSummarySchema.parse(raw);
+    await (0, step_summary_js_1.writeStepSummary)(summary, { artifactUrl });
+    emitAnnotations(summary);
+    if (postComment && summary.context.kind === "github" && githubToken) {
+        const context = run_summary_js_1.GitHubPRContextSchema.parse(summary.context);
+        await (0, pr_comment_js_1.postOrUpdatePrComment)((0, pr_context_js_1.getOctokit)(githubToken), context, (0, markdown_js_1.renderPrComment)(summary, "<!-- tabbyguard-review -->", artifactUrl), "<!-- tabbyguard-review -->");
+    }
+    if (artifactUrl) {
+        core.info(`Visual report and evidence: ${artifactUrl}`);
+    }
+}
+
+/***/ }),
+/***/ 99013:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231282,7 +231756,7 @@ async function postOrUpdatePrComment(client, context, body, marker) {
 }
 
 /***/ }),
-/***/ 99010:
+/***/ 99014:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231325,7 +231799,7 @@ exports.getCurrentPrContext = getCurrentPrContext;
 exports.getChangedFiles = getChangedFiles;
 const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
-const change_js_1 = __nccwpck_require__(99018);
+const change_js_1 = __nccwpck_require__(99023);
 function getOctokit(token) {
     return github.getOctokit(token);
 }
@@ -231336,6 +231810,7 @@ function getCurrentPrContext(previewUrl) {
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
     return {
+        kind: "github",
         owner,
         repo,
         repoFullName: `${owner}/${repo}`,
@@ -231373,7 +231848,7 @@ async function getChangedFiles(client, context) {
 }
 
 /***/ }),
-/***/ 99011:
+/***/ 99015:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231410,130 +231885,37 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__nccwpck_require__(7484));
-const node_path_1 = __importDefault(require("node:path"));
-const openai_js_1 = __nccwpck_require__(99000);
-const run_check_js_1 = __nccwpck_require__(99005);
-const pr_comment_js_1 = __nccwpck_require__(99009);
-const pr_context_js_1 = __nccwpck_require__(99010);
-const counts_js_1 = __nccwpck_require__(99012);
-const findings_js_1 = __nccwpck_require__(99013);
-const markdown_js_1 = __nccwpck_require__(99014);
-const step_summary_js_1 = __nccwpck_require__(99015);
-const mapper_js_1 = __nccwpck_require__(99016);
-const fs_js_1 = __nccwpck_require__(99022);
-const input_js_1 = __nccwpck_require__(99023);
-const severity_js_1 = __nccwpck_require__(99024);
+const action_js_1 = __nccwpck_require__(99000);
+const cli_js_1 = __nccwpck_require__(99010);
+const finalize_js_1 = __nccwpck_require__(99012);
 async function main() {
-    const started = Date.now();
-    const githubToken = (0, input_js_1.readInput)("github-token", true);
-    const previewUrl = (0, input_js_1.readInput)("preview-url", true);
-    new URL(previewUrl);
-    const mode = (0, input_js_1.readMode)();
-    const failOnSeverity = (0, input_js_1.readFailOnSeverity)();
-    const routes = (0, input_js_1.readRoutes)();
-    const maxChecks = (0, input_js_1.readMaxChecks)();
-    const openaiApiKey = (0, input_js_1.readInput)("openai-api-key");
-    const model = (0, input_js_1.readInput)("openai-model") || "gpt-5.6-terra";
-    const artifactDir = node_path_1.default.resolve((0, input_js_1.readInput)("artifact-dir") || ".tabbyguard");
-    const browserChannel = (0, input_js_1.readInput)("browser-channel") || "chrome";
-    const postComment = (0, input_js_1.readBoolean)("post-comment", true);
-    const commentMarker = "<!-- tabbyguard-review -->";
-    await (0, fs_js_1.ensureDir)(artifactDir);
-    const client = (0, pr_context_js_1.getOctokit)(githubToken);
-    const context = (0, pr_context_js_1.getCurrentPrContext)(previewUrl);
-    const changedFiles = await (0, pr_context_js_1.getChangedFiles)(client, context);
-    const fallbackPlan = (0, mapper_js_1.createDeterministicPlan)(changedFiles, routes, maxChecks);
-    let testPlan = fallbackPlan;
-    let modelUsed = "none";
-    if (mode === "assisted") {
-        if (!openaiApiKey) {
-            core.warning("mode=assisted was requested without openai-api-key. TabbyGuard is falling back to deterministic planning.");
-        }
-        else {
-            try {
-                testPlan = await (0, openai_js_1.createAssistedPlan)({
-                    apiKey: openaiApiKey,
-                    model,
-                    changedFiles,
-                    routes,
-                    fallbackPlan,
-                    maxChecks,
-                });
-                modelUsed = model;
-            }
-            catch (error) {
-                core.warning(`Assisted planning failed; deterministic planning will be used. ${error instanceof Error ? error.message : String(error)}`);
-            }
-        }
+    const entry = process.env.TABBYGUARD_ENTRY || "cli";
+    if (entry === "action") {
+        await (0, action_js_1.runAction)();
+        return;
     }
-    core.info(`TabbyGuard is running ${testPlan.length} targeted browser check(s).`);
-    const browserResults = await (0, run_check_js_1.runBrowserChecks)({
-        previewUrl,
-        artifactDir,
-        testPlan,
-        browserChannel,
-    });
-    let findings = (0, findings_js_1.summarizeDeterministically)(browserResults);
-    if (mode === "assisted" && openaiApiKey && findings.length > 0) {
-        try {
-            findings = await (0, openai_js_1.enrichFindings)({
-                apiKey: openaiApiKey,
-                model,
-                findings,
-                changedFiles,
-            });
-            modelUsed = model;
-        }
-        catch (error) {
-            core.warning(`AI explanation enrichment failed; evidence-backed deterministic findings are unchanged. ${error instanceof Error ? error.message : String(error)}`);
-        }
+    if (entry === "finalize") {
+        await (0, finalize_js_1.finalizeAction)();
+        return;
     }
-    const summary = {
-        context,
-        mode,
-        modelUsed,
-        durationMs: Date.now() - started,
-        changedFiles,
-        testPlan,
-        findings,
-        checkCounts: (0, counts_js_1.countChecks)(browserResults),
-        generatedAt: new Date().toISOString(),
-    };
-    const runSummaryPath = node_path_1.default.join(artifactDir, "run_summary.json");
-    await (0, fs_js_1.writeJson)(runSummaryPath, summary);
-    await (0, step_summary_js_1.writeStepSummary)(summary);
-    if (postComment) {
-        await (0, pr_comment_js_1.postOrUpdatePrComment)(client, context, (0, markdown_js_1.renderPrComment)(summary, commentMarker), commentMarker);
-    }
-    const findingCounts = (0, counts_js_1.countFindings)(findings);
-    const failed = (0, severity_js_1.shouldFail)(findings, failOnSeverity);
-    const result = failed ? "fail" : findings.length > 0 ? "warn" : "pass";
-    core.setOutput("result", result);
-    core.setOutput("findings-count", findings.length.toString());
-    core.setOutput("critical-count", findingCounts.critical.toString());
-    core.setOutput("high-count", findingCounts.high.toString());
-    core.setOutput("medium-count", findingCounts.medium.toString());
-    core.setOutput("low-count", findingCounts.low.toString());
-    core.setOutput("run-summary", runSummaryPath);
-    core.setOutput("evidence-path", artifactDir);
-    if (failed) {
-        core.setFailed(`TabbyGuard found ${findings.length} evidence-backed finding(s), including at least one at or above fail-on-severity=${failOnSeverity}.`);
-    }
-    else {
-        core.info(`TabbyGuard result: ${result}. ${findings.length} evidence-backed finding(s).`);
-    }
+    await (0, cli_js_1.runCli)();
 }
 main().catch((error) => {
-    core.setFailed(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    if (process.env.TABBYGUARD_ENTRY === "action")
+        core.setFailed(message);
+    else if (process.env.TABBYGUARD_ENTRY === "finalize")
+        core.warning(message);
+    else {
+        process.stderr.write(`\nTabbyGuard could not complete: ${message}\n`);
+        process.exitCode = 1;
+    }
 });
 
 /***/ }),
-/***/ 99012:
+/***/ 99016:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231559,13 +231941,13 @@ function countFindings(findings) {
 }
 
 /***/ }),
-/***/ 99013:
+/***/ 99017:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeDeterministically = summarizeDeterministically;
-const fs_js_1 = __nccwpck_require__(99022);
+const fs_js_1 = __nccwpck_require__(99027);
 function confidence(result, extra = []) {
     const reasons = [
         `Browser check reproduced a concrete ${result.item.checkType} signal.`,
@@ -231587,7 +231969,7 @@ function evidenceFor(result) {
         : [
             {
                 type: "log",
-                localPath: ".tabbyguard/run_summary.json",
+                localPath: "run_summary.json",
                 note: "Run summary",
             },
         ];
@@ -231607,7 +231989,7 @@ function summarizeDeterministically(results) {
         const findingStart = findings.length;
         const common = {
             sourceCheckId: result.item.id,
-            route: result.url,
+            route: result.item.route ?? result.url,
             changedFiles: result.item.changedFiles,
             evidence: evidenceFor(result),
         };
@@ -231771,76 +232153,496 @@ function summarizeDeterministically(results) {
 }
 
 /***/ }),
-/***/ 99014:
+/***/ 99018:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.renderHtmlReport = renderHtmlReport;
+function escapeHtml(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+function duration(ms) {
+    return ms < 1_000 ? `${ms}ms` : `${(ms / 1_000).toFixed(1)}s`;
+}
+function titleCase(value) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+function evidenceLabel(type) {
+    if (type === "screenshot")
+        return "Screenshot";
+    if (type === "trace")
+        return "Playwright trace";
+    if (type === "json")
+        return "Axe JSON";
+    return "Browser log";
+}
+function evidenceLinks(finding) {
+    return finding.evidence
+        .map((item) => `<a class="evidence-link" href="${escapeHtml(item.localPath)}">${escapeHtml(evidenceLabel(item.type))}</a>`)
+        .join("");
+}
+function findingCard(finding, check) {
+    const screenshot = finding.evidence.find((item) => item.type === "screenshot");
+    const changedFiles = finding.changedFiles.length
+        ? finding.changedFiles
+            .map((file) => `<code>${escapeHtml(file)}</code>`)
+            .join(" ")
+        : '<span class="muted">No direct file correlation</span>';
+    const confidenceReasons = finding.confidence.reasons
+        .map((reason) => `<li>${escapeHtml(reason)}</li>`)
+        .join("");
+    return `<article class="finding" data-severity="${escapeHtml(finding.severity)}" data-category="${escapeHtml(finding.category)}">
+    <div class="finding-main">
+      <div class="finding-head">
+        <div>
+          <div class="eyebrow severity-${escapeHtml(finding.severity)}">${escapeHtml(finding.severity.toUpperCase())} · ${escapeHtml(titleCase(finding.category))}</div>
+          <h3>${escapeHtml(finding.title)}</h3>
+        </div>
+        <span class="confidence">${escapeHtml(titleCase(finding.confidence.level))} confidence</span>
+      </div>
+      <div class="route-line">${escapeHtml(finding.route)}${check ? ` · ${escapeHtml(titleCase(check.viewport))}` : ""}</div>
+      <p class="summary-text">${escapeHtml(finding.summary)}</p>
+      <div class="detail-grid">
+        <section>
+          <h4>Likely cause</h4>
+          <p>${escapeHtml(finding.suggestedCause)}</p>
+        </section>
+        <section>
+          <h4>Related changes</h4>
+          <div class="code-list">${changedFiles}</div>
+        </section>
+      </div>
+      <details>
+        <summary>Why confidence is ${escapeHtml(finding.confidence.level)}</summary>
+        <ul>${confidenceReasons}</ul>
+      </details>
+      <div class="evidence-row">${evidenceLinks(finding)}</div>
+    </div>
+    ${screenshot
+        ? `<a class="finding-shot" href="${escapeHtml(screenshot.localPath)}"><img src="${escapeHtml(screenshot.localPath)}" alt="Failure screenshot for ${escapeHtml(finding.title)}" loading="lazy" /></a>`
+        : ""}
+  </article>`;
+}
+function snapshotCard(snapshot) {
+    return `<figure class="snapshot">
+    <a href="${escapeHtml(snapshot.path)}"><img src="${escapeHtml(snapshot.path)}" alt="${escapeHtml(snapshot.viewport)} snapshot for ${escapeHtml(snapshot.route)}" loading="lazy" /></a>
+    <figcaption>
+      <strong>${escapeHtml(titleCase(snapshot.viewport))}</strong>
+      <span>${escapeHtml(snapshot.route)}</span>
+    </figcaption>
+  </figure>`;
+}
+function checkRow(check) {
+    return `<tr data-status="${escapeHtml(check.status)}" data-category="${escapeHtml(check.checkType)}">
+    <td><span class="status status-${escapeHtml(check.status)}">${escapeHtml(titleCase(check.status))}</span></td>
+    <td>${escapeHtml(titleCase(check.checkType))}</td>
+    <td>${escapeHtml(check.route)}</td>
+    <td>${escapeHtml(titleCase(check.viewport))}</td>
+    <td>${escapeHtml(check.targetSurface)}</td>
+    <td>${escapeHtml(duration(check.durationMs))}</td>
+  </tr>`;
+}
+function resultCopy(summary) {
+    if (summary.result === "pass")
+        return "No evidence-backed regressions found.";
+    if (summary.result === "fail") {
+        return "Findings met or exceeded the configured failure threshold.";
+    }
+    return "The run completed, but evidence-backed findings need review.";
+}
+function contextMeta(summary) {
+    const values = [
+        summary.context.previewUrl,
+        summary.context.commitSha
+            ? `Commit ${summary.context.commitSha.slice(0, 12)}`
+            : undefined,
+        summary.context.kind === "github"
+            ? `PR #${summary.context.prNumber ?? "—"}`
+            : "Standalone scan",
+        `${titleCase(summary.mode)} mode`,
+        duration(summary.durationMs),
+    ];
+    return values.filter((value) => Boolean(value));
+}
+function renderHtmlReport(summary) {
+    const findingCards = summary.findings
+        .map((finding) => findingCard(finding, summary.checks.find((check) => check.id === finding.sourceCheckId)))
+        .join("\n");
+    const snapshotCards = summary.snapshots.map(snapshotCard).join("\n");
+    const checkRows = summary.checks.map(checkRow).join("\n");
+    const meta = contextMeta(summary)
+        .map((item) => `<span>${escapeHtml(item)}</span>`)
+        .join('<span class="meta-dot">•</span>');
+    const totalChecks = Object.values(summary.checkCounts).reduce((total, value) => total + value, 0);
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data: file:; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <title>TabbyGuard QA Report</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-subtle: #fafbfc;
+      --text: #16181d;
+      --muted: #626974;
+      --border: #dfe3e8;
+      --accent: #6558d3;
+      --pass: #157347;
+      --warn: #9a6700;
+      --fail: #b42318;
+      --critical: #b42318;
+      --high: #c2410c;
+      --medium: #a16207;
+      --low: #2563eb;
+      --skipped: #6b7280;
+      --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.05);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d0f12;
+        --panel: #14171b;
+        --panel-subtle: #191d22;
+        --text: #eef0f3;
+        --muted: #9ca3ad;
+        --border: #2a2f36;
+        --accent: #9a8fff;
+        --pass: #58c58a;
+        --warn: #e7b64a;
+        --fail: #ff766d;
+        --critical: #ff766d;
+        --high: #ff925f;
+        --medium: #e7b64a;
+        --low: #7fb0ff;
+        --skipped: #9ca3af;
+        --shadow: none;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a { color: inherit; }
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 36px 0 72px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 720; letter-spacing: .08em; }
+    .mark { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 8px; display: grid; place-items: center; background: var(--panel); }
+    .mark svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+    .generated { color: var(--muted); font-size: 12px; }
+    .hero { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+    .hero-main { display: grid; grid-template-columns: 1fr auto; gap: 28px; padding: 28px; }
+    .result-line { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .result { font-size: 12px; font-weight: 780; letter-spacing: .09em; border: 1px solid currentColor; border-radius: 999px; padding: 4px 8px; }
+    .result-pass { color: var(--pass); }
+    .result-warn { color: var(--warn); }
+    .result-fail { color: var(--fail); }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    h1 { font-size: clamp(28px, 4vw, 42px); letter-spacing: -.035em; line-height: 1.08; margin-bottom: 10px; }
+    .hero-copy { color: var(--muted); font-size: 15px; max-width: 680px; margin-bottom: 18px; }
+    .meta { color: var(--muted); display: flex; flex-wrap: wrap; gap: 7px; font-size: 12px; }
+    .meta-dot { opacity: .5; }
+    .headline-count { min-width: 160px; text-align: right; align-self: center; }
+    .headline-count strong { display: block; font-size: 38px; letter-spacing: -.04em; line-height: 1; }
+    .headline-count span { color: var(--muted); }
+    .metrics { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--border); background: var(--panel-subtle); }
+    .metric { padding: 16px 18px; border-right: 1px solid var(--border); }
+    .metric:last-child { border-right: 0; }
+    .metric strong { display: block; font-size: 18px; }
+    .metric span { color: var(--muted); font-size: 12px; }
+    .metric-critical strong { color: var(--critical); }
+    .metric-high strong { color: var(--high); }
+    .metric-medium strong { color: var(--medium); }
+    .metric-low strong { color: var(--low); }
+    .section { margin-top: 34px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
+    .section h2 { font-size: 18px; letter-spacing: -.015em; margin-bottom: 2px; }
+    .compact-filter-head { margin-top: -4px; align-items: center; }
+    .section-kicker { color: var(--muted); font-size: 12px; }
+    .snapshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .snapshot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .snapshot a { display: block; background: #e8eaee; max-height: 410px; overflow: auto; }
+    .snapshot img { width: 100%; display: block; }
+    .snapshot figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
+    .snapshot figcaption span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+    .filter { border: 1px solid var(--border); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 7px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+    .filter:hover, .filter.active { color: var(--text); border-color: var(--accent); }
+    .finding-list { display: grid; gap: 12px; }
+    .finding { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .finding-main { padding: 22px; min-width: 0; }
+    .finding-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+    .eyebrow { font-size: 11px; font-weight: 760; letter-spacing: .075em; margin-bottom: 7px; }
+    .severity-critical { color: var(--critical); }
+    .severity-high { color: var(--high); }
+    .severity-medium { color: var(--medium); }
+    .severity-low { color: var(--low); }
+    .finding h3 { font-size: 18px; margin-bottom: 0; letter-spacing: -.015em; }
+    .confidence { color: var(--muted); font-size: 11px; white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 4px 8px; }
+    .route-line { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; margin: 9px 0 14px; }
+    .summary-text { font-size: 14px; margin-bottom: 18px; }
+    .detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 22px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .detail-grid h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 7px; }
+    .detail-grid p { margin-bottom: 0; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--panel-subtle); border: 1px solid var(--border); border-radius: 5px; padding: 2px 5px; font-size: 11px; }
+    .code-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    details { margin-top: 15px; color: var(--muted); }
+    summary { cursor: pointer; color: var(--text); font-size: 12px; }
+    details ul { margin-bottom: 0; padding-left: 20px; }
+    .evidence-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+    .evidence-link { text-decoration: none; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 11px; color: var(--text); }
+    .evidence-link:hover { border-color: var(--accent); }
+    .finding-shot { display: block; border-left: 1px solid var(--border); background: var(--panel-subtle); min-height: 100%; max-height: 420px; overflow: auto; }
+    .finding-shot img { width: 100%; display: block; }
+    .empty { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 28px; color: var(--muted); }
+    .table-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: auto; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 12px; }
+    th { color: var(--muted); font-weight: 650; background: var(--panel-subtle); position: sticky; top: 0; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .status { font-weight: 650; }
+    .status-passed { color: var(--pass); }
+    .status-failed { color: var(--fail); }
+    .status-skipped, .status-inconclusive { color: var(--skipped); }
+    .muted { color: var(--muted); }
+    .footer { margin-top: 34px; color: var(--muted); font-size: 11px; text-align: center; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 1180px); padding-top: 20px; }
+      .topbar { margin-bottom: 18px; }
+      .hero-main { grid-template-columns: 1fr; padding: 22px; }
+      .headline-count { text-align: left; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .metric { border-bottom: 1px solid var(--border); }
+      .finding { grid-template-columns: 1fr; }
+      .finding-shot { border-left: 0; border-top: 1px solid var(--border); max-height: 320px; }
+      .finding-head, .section-head { align-items: flex-start; flex-direction: column; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3 19 6v5c0 4.5-2.8 8.2-7 10-4.2-1.8-7-5.5-7-10V6l7-3Z"/><path d="m8.8 12 2 2 4.4-4.4"/></svg>
+        </span>
+        TABBYGUARD
+      </div>
+      <div class="generated">Generated ${escapeHtml(new Date(summary.generatedAt).toLocaleString())}</div>
+    </div>
+
+    <section class="hero">
+      <div class="hero-main">
+        <div>
+          <div class="result-line"><span class="result result-${escapeHtml(summary.result)}">${escapeHtml(summary.result.toUpperCase())}</span><span class="muted">Frontend QA report</span></div>
+          <h1>${escapeHtml(summary.context.previewUrl)}</h1>
+          <p class="hero-copy">${escapeHtml(resultCopy(summary))}</p>
+          <div class="meta">${meta}</div>
+        </div>
+        <div class="headline-count"><strong>${summary.findings.length}</strong><span>finding${summary.findings.length === 1 ? "" : "s"} · ${totalChecks} checks</span></div>
+      </div>
+      <div class="metrics">
+        <div class="metric metric-critical"><strong>${summary.findingCounts.critical}</strong><span>Critical</span></div>
+        <div class="metric metric-high"><strong>${summary.findingCounts.high}</strong><span>High</span></div>
+        <div class="metric metric-medium"><strong>${summary.findingCounts.medium}</strong><span>Medium</span></div>
+        <div class="metric metric-low"><strong>${summary.findingCounts.low}</strong><span>Low</span></div>
+        <div class="metric"><strong>${summary.checkCounts.passed}</strong><span>Passed checks</span></div>
+        <div class="metric"><strong>${summary.checkCounts.skipped + summary.checkCounts.inconclusive}</strong><span>Skipped / inconclusive</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="visual-review">
+      <div class="section-head"><div><h2>Visual review</h2><div class="section-kicker">Representative snapshots captured once per route and viewport.</div></div></div>
+      ${summary.snapshots.length ? `<div class="snapshots">${snapshotCards}</div>` : '<div class="empty">No visual snapshots were captured for this run.</div>'}
+    </section>
+
+    <section class="section" id="findings">
+      <div class="section-head">
+        <div><h2>Findings</h2><div class="section-kicker">Only reproduced, evidence-backed failures are listed.</div></div>
+        <div class="filters" aria-label="Filter findings">
+          <button class="filter active" data-finding-filter="all">All · ${summary.findings.length}</button>
+          <button class="filter" data-finding-filter="critical">Critical · ${summary.findingCounts.critical}</button>
+          <button class="filter" data-finding-filter="high">High · ${summary.findingCounts.high}</button>
+          <button class="filter" data-finding-filter="medium">Medium · ${summary.findingCounts.medium}</button>
+          <button class="filter" data-finding-filter="low">Low · ${summary.findingCounts.low}</button>
+        </div>
+      </div>
+      ${summary.findings.length ? `<div class="finding-list">${findingCards}</div>` : '<div class="empty">No evidence-backed regressions were found.</div>'}
+    </section>
+
+    <section class="section" id="coverage">
+      <div class="section-head">
+        <div><h2>Check coverage</h2><div class="section-kicker">Every targeted browser probe, including skipped and inconclusive work.</div></div>
+        <div class="filters" aria-label="Filter checks">
+          <button class="filter active" data-check-filter="all">All</button>
+          <button class="filter" data-check-filter="failed">Failed</button>
+          <button class="filter" data-check-filter="passed">Passed</button>
+          <button class="filter" data-check-filter="skipped">Skipped</button>
+          <button class="filter" data-check-filter="inconclusive">Inconclusive</button>
+        </div>
+      </div>
+      <div class="section-head compact-filter-head">
+        <div class="filters" aria-label="Filter checks by type">
+          <button class="filter active" data-type-filter="all">All checks</button>
+          <button class="filter" data-type-filter="runtime">Runtime</button>
+          <button class="filter" data-type-filter="network">Network</button>
+          <button class="filter" data-type-filter="accessibility">A11y</button>
+          <button class="filter" data-type-filter="layout">Layout</button>
+          <button class="filter" data-type-filter="interaction">Interaction</button>
+          <button class="filter" data-type-filter="keyboard">Keyboard</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Status</th><th>Check</th><th>Route</th><th>Viewport</th><th>Surface</th><th>Time</th></tr></thead>
+        <tbody>${checkRows}</tbody>
+      </table></div>
+    </section>
+
+    <div class="footer">No evidence, no finding. Automated browser and accessibility checks complement—not replace—manual QA.</div>
+  </main>
+  <script>
+    (() => {
+      const bindSingle = (selector, itemSelector, attribute, targetAttribute) => {
+        const buttons = Array.from(document.querySelectorAll(selector));
+        const items = Array.from(document.querySelectorAll(itemSelector));
+        for (const button of buttons) {
+          button.addEventListener('click', () => {
+            const value = button.getAttribute(attribute) || 'all';
+            for (const other of buttons) other.classList.toggle('active', other === button);
+            for (const item of items) {
+              const actual = item.getAttribute(targetAttribute);
+              item.hidden = value !== 'all' && actual !== value;
+            }
+          });
+        }
+      };
+      bindSingle('[data-finding-filter]', '.finding', 'data-finding-filter', 'data-severity');
+
+      let statusFilter = 'all';
+      let typeFilter = 'all';
+      const rows = Array.from(document.querySelectorAll('tbody tr'));
+      const applyCheckFilters = () => {
+        for (const row of rows) {
+          const statusMatches = statusFilter === 'all' || row.getAttribute('data-status') === statusFilter;
+          const typeMatches = typeFilter === 'all' || row.getAttribute('data-category') === typeFilter;
+          row.hidden = !(statusMatches && typeMatches);
+        }
+      };
+      for (const button of document.querySelectorAll('[data-check-filter]')) {
+        button.addEventListener('click', () => {
+          statusFilter = button.getAttribute('data-check-filter') || 'all';
+          for (const other of document.querySelectorAll('[data-check-filter]')) other.classList.toggle('active', other === button);
+          applyCheckFilters();
+        });
+      }
+      for (const button of document.querySelectorAll('[data-type-filter]')) {
+        button.addEventListener('click', () => {
+          typeFilter = button.getAttribute('data-type-filter') || 'all';
+          for (const other of document.querySelectorAll('[data-type-filter]')) other.classList.toggle('active', other === button);
+          applyCheckFilters();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+/***/ }),
+/***/ 99019:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderPrComment = renderPrComment;
-const severity_js_1 = __nccwpck_require__(99024);
 function escapeTable(value) {
     return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 function workflowUrl(summary) {
     const { serverUrl, owner, repo, runId } = summary.context;
-    return serverUrl && runId
+    return serverUrl && owner && repo && runId
         ? `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`
         : undefined;
 }
-function counts(summary) {
-    return {
-        critical: summary.findings.filter((item) => item.severity === "critical").length,
-        high: summary.findings.filter((item) => item.severity === "high")
-            .length,
-        medium: summary.findings.filter((item) => item.severity === "medium").length,
-        low: summary.findings.filter((item) => item.severity === "low")
-            .length,
-    };
+function findingDetail(finding) {
+    return [
+        "",
+        "<details>",
+        `<summary><strong>${finding.severity.toUpperCase()}</strong> · ${finding.title}</summary>`,
+        "",
+        `**Route:** ${finding.route}`,
+        "",
+        finding.summary,
+        "",
+        `**Likely cause:** ${finding.suggestedCause}`,
+        "",
+        `**Confidence:** ${finding.confidence.level}`,
+        ...finding.confidence.reasons.map((reason) => `- ${reason}`),
+        "",
+        finding.changedFiles.length
+            ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${file}\``).join(", ")}`
+            : "**Related changes:** no direct file correlation",
+        "",
+        "</details>",
+    ];
 }
-function renderPrComment(summary, marker = "<!-- tabbyguard-review -->") {
-    const severity = counts(summary);
+function renderPrComment(summary, marker = "<!-- tabbyguard-review -->", artifactUrl) {
     const runUrl = workflowUrl(summary);
     const lines = [
         marker,
-        "# 🛡️ TabbyGuard",
-        "**Evidence-driven frontend QA**",
+        "## TabbyGuard",
         "",
-        summary.findings.length === 0
-            ? "### ✅ No evidence-backed regressions found"
-            : `### ⚠️ ${summary.findings.length} evidence-backed finding${summary.findings.length === 1 ? "" : "s"}`,
+        `### ${summary.result.toUpperCase()} · ${summary.findings.length} finding${summary.findings.length === 1 ? "" : "s"}`,
         "",
-        `**${severity.critical} critical · ${severity.high} high · ${severity.medium} medium · ${severity.low} low**`,
+        `**${summary.findingCounts.critical} critical · ${summary.findingCounts.high} high · ${summary.findingCounts.medium} medium · ${summary.findingCounts.low} low**`,
         "",
         `Preview: ${summary.context.previewUrl}  `,
-        `Commit: \`${summary.context.commitSha.slice(0, 12)}\` · Mode: \`${summary.mode}\` · Duration: ${(summary.durationMs / 1000).toFixed(1)}s  `,
-        runUrl
-            ? `Evidence: [open workflow run](${runUrl})`
-            : "Evidence: available in the workflow run",
-        "",
-        `**Checks:** ${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive`,
+        `${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive`,
         "",
     ];
+    if (artifactUrl) {
+        lines.push(`**[Download visual report and evidence](${artifactUrl})**`, "Open `report.html` for visual snapshots, screenshots, detailed findings, check coverage, logs, and trace links.", "");
+    }
+    else if (runUrl) {
+        lines.push(`[Open workflow run](${runUrl})`, "");
+    }
     if (summary.findings.length > 0) {
-        lines.push("## Findings", "", "| Severity | Area | Finding | Confidence |", "|---|---|---|---|");
+        lines.push("| Severity | Area | Finding | Route | Confidence |", "|---|---|---|---|---|");
         for (const finding of summary.findings) {
-            lines.push(`| ${(0, severity_js_1.severityIcon)(finding.severity)} ${finding.severity} | ${finding.category} | ${escapeTable(finding.title)} | ${finding.confidence.level} |`);
+            lines.push(`| ${finding.severity.toUpperCase()} | ${finding.category} | ${escapeTable(finding.title)} | ${escapeTable(finding.route)} | ${finding.confidence.level} |`);
         }
         for (const finding of summary.findings) {
-            lines.push("", "<details>", `<summary>${(0, severity_js_1.severityIcon)(finding.severity)} <strong>${finding.severity.toUpperCase()}</strong> — ${finding.title}</summary>`, "", `**Route:** ${finding.route}`, "", finding.summary, "", `**Likely cause:** ${finding.suggestedCause}`, "", `**Confidence: ${finding.confidence.level}**`, ...finding.confidence.reasons.map((reason) => `- ${reason}`), "", finding.changedFiles.length
-                ? `**Changed files:** ${finding.changedFiles.map((file) => `\`${file}\``).join(", ")}`
-                : "**Changed files:** no direct file correlation", "", "**Evidence:**", ...finding.evidence.map((item) => `- ${item.type}: \`${item.localPath}\`${item.note ? ` — ${item.note}` : ""}`), "", "</details>");
+            lines.push(...findingDetail(finding));
         }
     }
-    lines.push("", "## Targeted check plan", "", "| Surface | Route | Viewport | Check | Why |", "|---|---|---|---|---|");
-    for (const item of summary.testPlan) {
-        lines.push(`| ${escapeTable(item.targetSurface)} | ${escapeTable(item.route ?? "/")} | ${item.viewport} | ${item.checkType} | ${escapeTable(item.reason)} |`);
+    else {
+        lines.push("No evidence-backed regressions found.", "");
     }
-    lines.push("", "---", "_No evidence, no finding. Skipped or inconclusive probes never become defects on their own. Automated accessibility checks complement, but do not replace, manual accessibility review._");
+    if (summary.snapshots.length > 0) {
+        lines.push(`Visual snapshots captured: **${summary.snapshots.length}**`, "");
+    }
+    lines.push("---", "_No evidence, no finding. Skipped and inconclusive probes never become defects by themselves._");
     return `${lines.join("\n")}\n`;
 }
 
 /***/ }),
-/***/ 99015:
+/***/ 99020:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231880,36 +232682,49 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeStepSummary = writeStepSummary;
 const core = __importStar(__nccwpck_require__(7484));
-async function writeStepSummary(summary) {
-    const rows = summary.findings
-        .slice(0, 10)
-        .map((item) => `| ${item.severity.toUpperCase()} | ${item.category} | ${item.title.replace(/\|/g, "\\|")} |`)
-        .join("\n");
-    const markdown = [
-        "# 🛡️ TabbyGuard",
+async function writeStepSummary(summary, options = {}) {
+    const lines = [
+        `# TabbyGuard — ${summary.result.toUpperCase()}`,
         "",
-        `**${summary.findings.length} findings · ${summary.checkCounts.passed} passed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive**`,
-        "",
-        summary.findings.length
-            ? "| Severity | Area | Finding |\n|---|---|---|\n" + rows
-            : "✅ No evidence-backed regressions found.",
+        `**${summary.findings.length} findings · ${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive**`,
         "",
         `Preview: ${summary.context.previewUrl}`,
         "",
-        "_No evidence, no finding._",
-    ].join("\n");
-    await core.summary.addRaw(markdown).write();
+        "| Critical | High | Medium | Low |",
+        "|---:|---:|---:|---:|",
+        `| ${summary.findingCounts.critical} | ${summary.findingCounts.high} | ${summary.findingCounts.medium} | ${summary.findingCounts.low} |`,
+        "",
+    ];
+    if (summary.findings.length > 0) {
+        lines.push("## Findings", "", "| Severity | Area | Finding | Route | Confidence |", "|---|---|---|---|---|");
+        for (const finding of summary.findings.slice(0, 15)) {
+            lines.push(`| ${finding.severity.toUpperCase()} | ${finding.category} | ${finding.title.replace(/\|/g, "\\|")} | ${finding.route.replace(/\|/g, "\\|")} | ${finding.confidence.level} |`);
+        }
+        lines.push("");
+    }
+    else {
+        lines.push("No evidence-backed regressions found.", "");
+    }
+    if (summary.snapshots.length > 0) {
+        lines.push(`Visual snapshots captured: **${summary.snapshots.length}**`, "");
+    }
+    if (options.artifactUrl) {
+        lines.push(`**[Download the full visual report and evidence](${options.artifactUrl})**`, "", "Open `report.html` from the downloaded artifact for screenshots, finding details, check coverage, logs, Axe output, and trace links.", "");
+    }
+    lines.push("---", "_No evidence, no finding. Skipped and inconclusive probes never become defects by themselves._");
+    await core.summary.addRaw(lines.join("\n")).write();
 }
 
 /***/ }),
-/***/ 99016:
+/***/ 99021:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createDeterministicPlan = createDeterministicPlan;
-const fs_js_1 = __nccwpck_require__(99022);
-const rules_js_1 = __nccwpck_require__(99017);
+exports.createStandalonePlan = createStandalonePlan;
+const fs_js_1 = __nccwpck_require__(99027);
+const rules_js_1 = __nccwpck_require__(99022);
 const FRONTEND_EXT = /\.(tsx|jsx|ts|js|vue|svelte|css|scss|sass|html|mdx)$/i;
 function fileMatches(rule, file) {
     if (rule.patterns.some((pattern) => pattern.test(file.filename)))
@@ -232005,9 +232820,73 @@ function createDeterministicPlan(changedFiles, routes, maxChecks = 16) {
     }
     return dedupe(plan).slice(0, maxChecks);
 }
+function createStandalonePlan(routes, maxChecks = 16) {
+    const requestedRoutes = routes.length > 0 ? routes : ["/"];
+    const plan = [];
+    for (const route of requestedRoutes) {
+        const normalized = route || "/";
+        const routeId = (0, fs_js_1.slugify)(normalized === "/" ? "home" : normalized);
+        const items = [
+            {
+                id: `${routeId}-mobile-layout`,
+                targetSurface: "Rendered page",
+                route: normalized,
+                viewport: "mobile",
+                checkType: "layout",
+                reason: "Standalone smoke test for responsive overflow.",
+                changedFiles: [],
+                selectors: [],
+            },
+            {
+                id: `${routeId}-mobile-a11y`,
+                targetSurface: "Rendered page",
+                route: normalized,
+                viewport: "mobile",
+                checkType: "accessibility",
+                reason: "Standalone smoke test for serious automated accessibility issues.",
+                changedFiles: [],
+                selectors: [],
+            },
+            {
+                id: `${routeId}-desktop-runtime`,
+                targetSurface: "Rendered page",
+                route: normalized,
+                viewport: "desktop",
+                checkType: "runtime",
+                reason: "Standalone smoke test for browser runtime errors.",
+                changedFiles: [],
+                selectors: [],
+            },
+            {
+                id: `${routeId}-desktop-network`,
+                targetSurface: "Rendered page",
+                route: normalized,
+                viewport: "desktop",
+                checkType: "network",
+                reason: "Standalone smoke test for failed first-party requests.",
+                changedFiles: [],
+                selectors: [],
+            },
+            {
+                id: `${routeId}-desktop-keyboard`,
+                targetSurface: "Rendered page",
+                route: normalized,
+                viewport: "desktop",
+                checkType: "keyboard",
+                reason: "Standalone smoke test for basic keyboard focus progression.",
+                changedFiles: [],
+                selectors: [],
+            },
+        ];
+        plan.push(...items);
+        if (plan.length >= maxChecks)
+            break;
+    }
+    return plan.slice(0, maxChecks);
+}
 
 /***/ }),
-/***/ 99017:
+/***/ 99022:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232133,7 +233012,7 @@ exports.riskRules = [
 ];
 
 /***/ }),
-/***/ 99018:
+/***/ 99023:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232161,7 +233040,7 @@ function boundedChanges(files, maxPerFile = 4_000, maxTotal = 16_000) {
 }
 
 /***/ }),
-/***/ 99019:
+/***/ 99024:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232201,26 +233080,35 @@ exports.FindingSchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99020:
+/***/ 99025:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RunSummarySchema = exports.CheckStatusSchema = exports.PRContextSchema = void 0;
+exports.RunSummarySchema = exports.VisualSnapshotSchema = exports.CheckRecordSchema = exports.CheckStatusSchema = exports.GitHubPRContextSchema = exports.RunContextSchema = void 0;
 const zod_1 = __nccwpck_require__(924);
-const change_js_1 = __nccwpck_require__(99018);
-const finding_js_1 = __nccwpck_require__(99019);
-const test_plan_js_1 = __nccwpck_require__(99021);
-exports.PRContextSchema = zod_1.z.object({
+const change_js_1 = __nccwpck_require__(99023);
+const finding_js_1 = __nccwpck_require__(99024);
+const test_plan_js_1 = __nccwpck_require__(99026);
+exports.RunContextSchema = zod_1.z.object({
+    kind: zod_1.z.enum(["github", "standalone"]),
+    previewUrl: zod_1.z.string().url(),
+    owner: zod_1.z.string().optional(),
+    repo: zod_1.z.string().optional(),
+    repoFullName: zod_1.z.string().optional(),
+    prNumber: zod_1.z.number().optional(),
+    commitSha: zod_1.z.string().optional(),
+    runId: zod_1.z.number().optional(),
+    runAttempt: zod_1.z.number().optional(),
+    serverUrl: zod_1.z.string().optional(),
+});
+exports.GitHubPRContextSchema = exports.RunContextSchema.extend({
+    kind: zod_1.z.literal("github"),
     owner: zod_1.z.string(),
     repo: zod_1.z.string(),
     repoFullName: zod_1.z.string(),
     prNumber: zod_1.z.number(),
     commitSha: zod_1.z.string(),
-    previewUrl: zod_1.z.string(),
-    runId: zod_1.z.number().optional(),
-    runAttempt: zod_1.z.number().optional(),
-    serverUrl: zod_1.z.string().optional(),
 });
 exports.CheckStatusSchema = zod_1.z.enum([
     "passed",
@@ -232228,14 +233116,45 @@ exports.CheckStatusSchema = zod_1.z.enum([
     "skipped",
     "inconclusive",
 ]);
+exports.CheckRecordSchema = zod_1.z.object({
+    id: zod_1.z.string(),
+    targetSurface: zod_1.z.string(),
+    route: zod_1.z.string(),
+    url: zod_1.z.string(),
+    viewport: test_plan_js_1.ViewportNameSchema,
+    checkType: test_plan_js_1.CheckTypeSchema,
+    status: exports.CheckStatusSchema,
+    durationMs: zod_1.z.number(),
+    reason: zod_1.z.string(),
+    changedFiles: zod_1.z.array(zod_1.z.string()),
+    notes: zod_1.z.array(zod_1.z.string()),
+    evidence: zod_1.z.array(finding_js_1.EvidenceSchema),
+});
+exports.VisualSnapshotSchema = zod_1.z.object({
+    route: zod_1.z.string(),
+    url: zod_1.z.string(),
+    viewport: test_plan_js_1.ViewportNameSchema,
+    path: zod_1.z.string(),
+});
 exports.RunSummarySchema = zod_1.z.object({
-    context: exports.PRContextSchema,
+    schemaVersion: zod_1.z.literal(3),
+    context: exports.RunContextSchema,
+    result: zod_1.z.enum(["pass", "warn", "fail"]),
+    failOnSeverity: zod_1.z.union([zod_1.z.literal("none"), finding_js_1.SeveritySchema]),
     mode: zod_1.z.enum(["deterministic", "assisted"]),
     modelUsed: zod_1.z.string(),
     durationMs: zod_1.z.number(),
     changedFiles: zod_1.z.array(change_js_1.ChangedFileSchema),
     testPlan: zod_1.z.array(test_plan_js_1.TestPlanItemSchema),
+    checks: zod_1.z.array(exports.CheckRecordSchema),
+    snapshots: zod_1.z.array(exports.VisualSnapshotSchema),
     findings: zod_1.z.array(finding_js_1.FindingSchema),
+    findingCounts: zod_1.z.object({
+        critical: zod_1.z.number(),
+        high: zod_1.z.number(),
+        medium: zod_1.z.number(),
+        low: zod_1.z.number(),
+    }),
     checkCounts: zod_1.z.object({
         passed: zod_1.z.number(),
         failed: zod_1.z.number(),
@@ -232246,7 +233165,7 @@ exports.RunSummarySchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99021:
+/***/ 99026:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232285,7 +233204,7 @@ function viewportSize(viewport) {
 }
 
 /***/ }),
-/***/ 99022:
+/***/ 99027:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232327,7 +233246,7 @@ async function listFilesRecursive(dir) {
 }
 
 /***/ }),
-/***/ 99023:
+/***/ 99028:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232371,6 +233290,7 @@ exports.readMode = readMode;
 exports.readFailOnSeverity = readFailOnSeverity;
 exports.readRoutes = readRoutes;
 exports.readMaxChecks = readMaxChecks;
+exports.readScreenshotMode = readScreenshotMode;
 const core = __importStar(__nccwpck_require__(7484));
 function readInput(name, required = false) {
     const fromCore = core.getInput(name);
@@ -232422,9 +233342,16 @@ function readMaxChecks() {
         throw new Error("max-checks must be an integer from 1 to 24");
     return raw;
 }
+function readScreenshotMode() {
+    const value = readInput("screenshot-mode") || "all";
+    if (!["failures", "all", "none"].includes(value)) {
+        throw new Error("screenshot-mode must be failures, all, or none");
+    }
+    return value;
+}
 
 /***/ }),
-/***/ 99024:
+/***/ 99029:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232567,7 +233494,7 @@ function severityIcon(severity) {
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(99011);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(99015);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()

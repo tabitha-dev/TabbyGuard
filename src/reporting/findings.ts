@@ -30,7 +30,7 @@ function evidenceFor(result: BrowserCheckResult): Finding["evidence"] {
     : [
         {
           type: "log",
-          localPath: ".tabbyguard/run_summary.json",
+          localPath: "run_summary.json",
           note: "Run summary",
         },
       ];
@@ -54,7 +54,7 @@ export function summarizeDeterministically(
     const findingStart = findings.length;
     const common = {
       sourceCheckId: result.item.id,
-      route: result.url,
+      route: result.item.route ?? result.url,
       changedFiles: result.item.changedFiles,
       evidence: evidenceFor(result),
     };
