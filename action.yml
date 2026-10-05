@@ -1,105 +1,95 @@
 name: "TabbyGuard"
-description: "Evidence-driven frontend QA for pull requests"
+description: "Evidence-driven frontend QA for pull requests with visual reports"
 author: "Tabitha Khadse"
 
 inputs:
   github-token:
     description: "GitHub token used to read PR metadata and post the TabbyGuard review"
     required: true
-
   preview-url:
     description: "Preview deployment URL to test"
     required: true
-
   mode:
     description: "deterministic or assisted"
     required: false
     default: "deterministic"
-
   fail-on-severity:
     description: "none, critical, high, medium, or low"
     required: false
     default: "high"
-
   openai-api-key:
     description: "Optional OpenAI API key used only in assisted mode"
     required: false
-
   openai-model:
     description: "OpenAI model used in assisted mode"
     required: false
     default: "gpt-5.6-terra"
-
   routes:
     description: "Optional comma-separated routes to prioritize"
     required: false
     default: "/"
-
   artifact-dir:
-    description: "Directory for screenshots, traces, logs, and run_summary.json"
+    description: "Directory for the visual report, screenshots, traces, logs, and JSON"
     required: false
     default: ".tabbyguard"
-
   upload-artifacts:
     description: "Upload TabbyGuard evidence as a GitHub Actions artifact"
     required: false
     default: "true"
-
   browser-channel:
     description: "Installed browser channel to use"
     required: false
     default: "chrome"
-
   max-checks:
     description: "Maximum number of targeted browser checks (1-24)"
     required: false
     default: "16"
-
   post-comment:
     description: "Post or update the TabbyGuard pull request comment"
     required: false
     default: "true"
+  screenshot-mode:
+    description: "all, failures, or none. all captures one visual snapshot per route/viewport plus failure evidence"
+    required: false
+    default: "all"
 
 outputs:
   result:
     description: "pass, warn, or fail"
     value: ${{ steps.guard.outputs.result }}
-
   findings-count:
     description: "Total evidence-backed findings"
     value: ${{ steps.guard.outputs.findings-count }}
-
   critical-count:
     description: "Critical findings"
     value: ${{ steps.guard.outputs.critical-count }}
-
   high-count:
     description: "High findings"
     value: ${{ steps.guard.outputs.high-count }}
-
   medium-count:
     description: "Medium findings"
     value: ${{ steps.guard.outputs.medium-count }}
-
   low-count:
     description: "Low findings"
     value: ${{ steps.guard.outputs.low-count }}
-
   run-summary:
     description: "Path to run_summary.json"
     value: ${{ steps.guard.outputs.run-summary }}
-
+  report-path:
+    description: "Path to the self-contained visual HTML report"
+    value: ${{ steps.guard.outputs.report-path }}
   evidence-path:
     description: "Directory containing TabbyGuard evidence"
     value: ${{ steps.guard.outputs.evidence-path }}
-
   artifact-id:
     description: "Uploaded evidence artifact ID when upload is enabled"
     value: ${{ steps.upload.outputs.artifact-id }}
+  artifact-url:
+    description: "Direct GitHub URL for the uploaded TabbyGuard artifact"
+    value: ${{ steps.upload.outputs.artifact-url }}
 
 runs:
   using: composite
-
   steps:
     - name: Use Node.js 24
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -120,10 +110,11 @@ runs:
         INPUT_ARTIFACT_DIR: ${{ inputs.artifact-dir }}
         INPUT_BROWSER_CHANNEL: ${{ inputs.browser-channel }}
         INPUT_MAX_CHECKS: ${{ inputs.max-checks }}
-        INPUT_POST_COMMENT: ${{ inputs.post-comment }}
+        INPUT_SCREENSHOT_MODE: ${{ inputs.screenshot-mode }}
+        TABBYGUARD_ENTRY: action
       run: node "${{ github.action_path }}/dist/index.js"
 
-    - name: Upload TabbyGuard evidence
+    - name: Upload TabbyGuard visual report and evidence
       id: upload
       if: ${{ always() && inputs.upload-artifacts == 'true' }}
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -133,6 +124,17 @@ runs:
         if-no-files-found: warn
         include-hidden-files: true
         retention-days: 14
+
+    - name: Publish TabbyGuard results
+      if: ${{ always() && steps.guard.outputs.run-summary != '' }}
+      shell: bash
+      env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_RUN_SUMMARY: ${{ steps.guard.outputs.run-summary }}
+        INPUT_ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        INPUT_POST_COMMENT: ${{ inputs.post-comment }}
+        TABBYGUARD_ENTRY: finalize
+      run: node "${{ github.action_path }}/dist/index.js"
 
 branding:
   icon: shield

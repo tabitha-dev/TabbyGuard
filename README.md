@@ -1,69 +1,36 @@
 <div align="center">
 
-<img src="./docs/assets/tabbyguard-logo.svg" alt="TabbyGuard — Evidence-driven frontend QA for pull requests" width="900" />
+# TabbyGuard
 
-<br />
+**Evidence-driven frontend QA with a visual report developers can actually use.**
 
-![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-Node%2024-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-Browser%20Evidence-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
-![Accessibility](https://img.shields.io/badge/A11y-Axe%20Checks-6A5ACD?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-111827?style=for-the-badge)
-
-<br />
-
-**Change-aware browser QA that tests the deployed pull request, captures proof, and posts a focused review before merge.**
-
-[Quick Start](#-quick-start) · [How It Works](#-how-it-works) · [Checks](#-what-tabbyguard-checks) · [Demo Fixtures](#-proof-oriented-demo-fixtures) · [Configuration](#%EF%B8%8F-configuration)
+TabbyGuard tests a deployed frontend in a real browser, turns only reproduced failures into findings, and produces a clean GitHub-native summary plus a self-contained HTML report with screenshots, check coverage, logs, accessibility output, and Playwright traces.
 
 </div>
 
 ---
 
-## 📌 Project Summary
+## What V3 changes
 
-**TabbyGuard** is a GitHub Action for frontend pull-request QA.
+TabbyGuard V3 keeps the deterministic browser evidence from V2 and makes the product much easier to understand.
 
-Static checks are essential, but they cannot tell you everything that happens in the running browser. A clean diff can still produce a mobile overflow bug, an inaccessible control, a runtime exception, a broken dialog, or a failed first-party request.
+A run now produces three layers of reporting:
 
-TabbyGuard closes that gap by combining pull-request change context with targeted browser checks.
+1. **GitHub Actions summary** — outcome, severity counts, findings, and a direct artifact link.
+2. **Pull request review** — a concise developer-facing explanation of what failed and why.
+3. **`report.html`** — a responsive visual QA report with route/viewport snapshots, detailed finding cards, check coverage, and evidence links.
 
-It:
+The same QA engine also supports a standalone CLI, so GitHub pull-request context is no longer a requirement for testing a URL.
 
-- Reads changed files and bounded diff context from the pull request
-- Maps those changes to a small, high-signal test plan
-- Opens the preview deployment in a real browser
-- Runs runtime, network, accessibility, responsive-layout, interaction, and keyboard checks
-- Distinguishes **passed**, **failed**, **skipped**, and **inconclusive** checks
-- Captures screenshots, Playwright traces, logs, and accessibility JSON
-- Posts a concise PR review and GitHub Step Summary
-- Exposes outputs so the rest of CI can react programmatically
-- Optionally uses OpenAI to refine planning and explain likely causes without giving the model authority to invent findings
-
-The core rule is intentionally strict:
+The core rule remains:
 
 > **No evidence, no finding.**
 
 ---
 
-## ✨ See the Review Format
+## GitHub Action quick start
 
-<img src="./docs/assets/pr-review.svg" alt="Example TabbyGuard pull request review" width="900" />
-
-The review is designed to answer four questions quickly:
-
-1. **What failed?**
-2. **Where did it fail?**
-3. **What evidence was captured?**
-4. **Which changed files are most likely related?**
-
-A skipped heuristic never appears as a defect just because TabbyGuard could not find a safe element to test.
-
----
-
-## 🚀 Quick Start
-
-Add TabbyGuard after your preview deployment is available:
+Run TabbyGuard after a preview deployment is available:
 
 ```yaml
 name: Frontend QA
@@ -80,594 +47,363 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run TabbyGuard
-        uses: tabitha-dev/TabbyGuard@v2
+        id: tabbyguard
+        uses: tabitha-dev/TabbyGuard@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           preview-url: ${{ env.PREVIEW_URL }}
+          routes: /,/pricing,/checkout
+          fail-on-severity: high
 ```
 
-That is the normal setup.
+The action uploads a `tabbyguard-evidence-*` artifact. Download it and open `report.html` for the full visual report.
 
-TabbyGuard defaults to deterministic mode, uses the Chrome installation available on GitHub-hosted Ubuntu runners, writes a workflow summary, and uploads its evidence directory.
-
-### With known routes
+### Read the result in later steps
 
 ```yaml
-- name: Run TabbyGuard
-  uses: tabitha-dev/TabbyGuard@v2
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    preview-url: ${{ env.PREVIEW_URL }}
-    routes: /,/pricing,/checkout
-    fail-on-severity: high
+- name: Show TabbyGuard result
+  run: |
+    echo "Result: ${{ steps.tabbyguard.outputs.result }}"
+    echo "Findings: ${{ steps.tabbyguard.outputs.findings-count }}"
+    echo "Visual report: ${{ steps.tabbyguard.outputs.artifact-url }}"
 ```
-
-### Optional AI-assisted mode
-
-```yaml
-- name: Run TabbyGuard
-  uses: tabitha-dev/TabbyGuard@v2
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    preview-url: ${{ env.PREVIEW_URL }}
-    mode: assisted
-    openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-```
-
-AI is optional. The default path has no model dependency.
 
 ---
 
-## 🧠 Why I Built This
+## Standalone CLI
 
-Frontend regressions frequently appear only when code is rendered and used.
+The V3 package includes a standalone `tabbyguard` binary.
 
-Examples include:
+```bash
+npx tabbyguard https://example.com
+```
 
-- A card that becomes 700px wide on a 390px viewport
-- A button that loses its accessible name
-- A dialog that opens but no longer closes with Escape
-- A client-side exception triggered during render
-- A first-party request returning a server error
-- Keyboard focus that stops advancing through interactive controls
+Useful options:
 
-A human reviewer may not have time to open every preview, resize the browser, inspect the console, run Axe, test keyboard behavior, and collect evidence.
+```bash
+npx tabbyguard https://example.com \
+  --routes /,/pricing \
+  --fail-on-severity high \
+  --screenshot-mode all \
+  --open
+```
 
-TabbyGuard turns those browser checks into a repeatable PR-review layer while deliberately avoiding the opposite problem: noisy automated findings based on guesses.
-
----
-
-## 🧱 How It Works
-
-<img src="./docs/assets/architecture.svg" alt="TabbyGuard architecture" width="950" />
-
-The important boundary is between **planning** and **evidence**.
-
-Planning decides what is worth testing. Evidence decides whether a finding exists.
+The CLI writes:
 
 ```text
-changed files + bounded diff
-          ↓
-    risk-based plan
-          ↓
-  browser execution
-          ↓
- passed / failed / skipped / inconclusive
-          ↓
- only concrete failures become findings
+.tabbyguard/
+├── report.html
+├── run_summary.json
+├── snapshots/
+├── screenshots/
+├── traces/
+├── logs/
+└── a11y/
 ```
 
-This keeps the system useful even when a heuristic is uncertain.
+`--open` opens the generated report after the run when the operating system provides a normal file opener.
+
+> The repository is package-ready for npm publication. Until the npm package is published, the GitHub Action remains the supported public installation path.
 
 ---
 
-## 🎯 Change-Aware Risk Mapping
+## The visual report
 
-TabbyGuard uses both filenames and bounded patch context when choosing checks.
+`report.html` is generated from the same deterministic evidence used to decide findings. It has no CDN or external runtime dependency.
 
-| Change signal                        | Likely risk                              | Targeted checks                                       |
-| ------------------------------------ | ---------------------------------------- | ----------------------------------------------------- |
-| `Header.tsx`, `Nav.tsx`, menu markup | Responsive navigation and focus          | Interaction, keyboard, layout, accessibility, runtime |
-| `CheckoutForm.tsx`, form markup      | Labels, focus, validation, client errors | Interaction, keyboard, accessibility, runtime         |
-| `Modal.tsx`, dialog/overlay markup   | Escape behavior, visibility, focus       | Interaction, keyboard, accessibility, layout          |
-| CSS/theme/token changes              | Overflow and contrast                    | Accessibility, mobile/desktop layout                  |
-| Layout/grid/container changes        | Clipping and horizontal scroll           | Layout, runtime                                       |
-| Query/API/state changes              | Browser exceptions and failed calls      | Runtime, first-party network                          |
+The report includes:
 
-When no specific rule matches, TabbyGuard falls back to a compact smoke plan instead of attempting to test the entire application.
+- Overall `PASS`, `WARN`, or `FAIL` outcome
+- Tested URL, mode, duration, commit/PR context when available
+- Critical / high / medium / low counters
+- Representative **mobile and desktop visual snapshots** captured once per route and viewport
+- Filterable finding cards
+- Route, viewport, category, severity, and confidence
+- Likely cause and related changed files
+- Screenshot, browser log, Axe JSON, and Playwright trace links
+- Full check-coverage table showing **passed / failed / skipped / inconclusive** work
+- Light and dark presentation based on the viewer's system preference
+
+The UI is intentionally restrained: neutral surfaces, compact typography, meaningful severity color, and no decorative AI-style dashboard elements.
 
 ---
 
-## ✅ What TabbyGuard Checks
+## What TabbyGuard checks
 
-### 🧯 Browser Runtime
+### Runtime
 
-- Uncaught page exceptions
-- Browser console errors
-- Runtime failures during the targeted route
+- Uncaught browser exceptions
+- Console errors emitted while a target route is loaded or exercised
 
-### 🌐 Network
+### Network
 
 - Failed **first-party** requests
 - First-party 5xx responses
-- Third-party analytics/ad noise is not promoted to a finding
+- Third-party analytics, ads, fonts, and telemetry are not promoted to findings
 
-### ♿ Accessibility
+### Accessibility
 
-- Axe WCAG rule scans
+- Axe WCAG automated scans
 - Serious and critical automated violations
-- Accessible-name, contrast, role, and semantic problems detectable by Axe
+- Accessible-name, semantics, contrast, and related Axe-detectable problems
 
-### 📱 Responsive Layout
+### Responsive layout
 
-- Mobile, tablet, and desktop viewports
+- Mobile, tablet, and desktop viewports when selected by the plan
 - Horizontal document overflow
-- Specific visible elements extending beyond the viewport
+- Visible elements extending beyond the viewport
 
-### 🖱️ Interaction
+### Interaction
 
 - Navigation/menu triggers
-- Dialog open + Escape behavior
-- Safe form-focus probes
+- Dialog open and Escape behavior
+- Safe form focus probes
 
-If TabbyGuard cannot identify a safe visible control, the result is **skipped** rather than failed.
+If a safe target cannot be identified, the check is **skipped** rather than turned into a defect.
 
-### ⌨️ Keyboard
+### Keyboard
 
 - Visible focusable-element count
 - Tab focus progression
-- Repeated focus that indicates navigation is not advancing
+- Repeated focus that indicates keyboard navigation is not advancing
 
 ---
 
-## 🧭 Check Statuses
+## Visual evidence
 
-This is one of the most important V2 changes.
+With the default:
 
-| Status         | Meaning                                             | Creates a finding? |
-| -------------- | --------------------------------------------------- | -----------------: |
-| `passed`       | The targeted behavior was evaluated and worked      |                 No |
-| `failed`       | Concrete browser evidence reproduced a defect       |            **Yes** |
-| `skipped`      | No safe/relevant target could be identified         |                 No |
-| `inconclusive` | The page did not provide enough evidence either way |                 No |
-
-For example:
-
-```text
-Header.tsx changed
-      ↓
-Navigation interaction probe planned
-      ↓
-No visible menu trigger exists on this route
-      ↓
-SKIPPED
-      ↓
-No defect created
+```yaml
+screenshot-mode: all
 ```
 
-Compare that with:
+TabbyGuard captures one representative page snapshot per route/viewport and additional screenshots for failed checks.
+
+Other modes:
 
 ```text
-Modal.tsx changed
-      ↓
-Visible "Open details" button found
-      ↓
-Dialog opens
-      ↓
-Escape pressed
-      ↓
-Dialog remains visible
-      ↓
-FAILED + screenshot + trace + log
-      ↓
-Finding created
+all       representative visual snapshots + failure screenshots
+failures  failure screenshots only
+none      no PNG screenshots
 ```
+
+Playwright traces and raw browser logs remain available regardless of screenshot mode.
 
 ---
 
-## 🔐 Explainable Confidence
+## Check states
 
-TabbyGuard does not use arbitrary confidence percentages.
+| Status         | Meaning                                        | Creates a finding? |
+| -------------- | ---------------------------------------------- | -----------------: |
+| `passed`       | The targeted behavior was evaluated and worked |                 No |
+| `failed`       | Concrete browser evidence reproduced a defect  |            **Yes** |
+| `skipped`      | No safe/relevant target could be identified    |                 No |
+| `inconclusive` | There was not enough evidence either way       |                 No |
 
-A finding contains a confidence level plus the reasons for that level.
+A missing menu, dialog, or form target is not a product failure by itself.
 
-Example:
+---
+
+## Findings and confidence
+
+TabbyGuard does not use decorative confidence percentages.
+
+Every finding includes a confidence level plus explicit reasons, for example:
 
 ```text
 Confidence: high
 
-✓ Browser check reproduced a concrete layout signal
-✓ Document width exceeded viewport width
-✓ Screenshot and raw log evidence were captured
+- Browser check reproduced a concrete layout signal.
+- Document width exceeded the viewport width.
+- Screenshot and raw browser evidence were captured.
 ```
 
-This makes confidence inspectable rather than decorative.
+AI-assisted mode cannot invent findings, remove deterministic findings, or change their severity/confidence.
 
 ---
 
-## 🧩 Deterministic vs Assisted Mode
+## Deterministic and assisted modes
 
-### 1. Deterministic mode — default
+### Deterministic — default
 
 ```yaml
 mode: deterministic
 ```
 
-No AI key is required.
+No model key is required. Changed files and bounded diff context choose a small risk-oriented test plan, and browser evidence decides the result.
 
-The local risk mapper selects targeted checks from changed files and bounded diff context. Browser evidence and deterministic finding rules decide the result.
-
-Use this when you want:
-
-- Predictable CI behavior
-- No model cost
-- No pull-request content sent to a model provider
-- A reliable default for public or private projects
-
-### 2. Assisted mode — optional
+### Assisted — optional
 
 ```yaml
 mode: assisted
+openai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-Assisted mode can use OpenAI to:
-
-- Refine the deterministic test plan
-- Choose among user-approved routes
-- Improve the suggested technical cause for an existing finding
-
-The model **cannot**:
-
-- Create a finding without browser evidence
-- Remove a deterministic finding
-- Change finding severity
-- Change finding confidence
-- Turn a skipped/inconclusive check into a defect
-
-The integration uses the OpenAI Responses API with JSON Schema Structured Outputs and validates the result with Zod.
+Assisted mode can refine planning and improve suggested technical causes. Browser evidence remains authoritative.
 
 ---
 
-## 📸 Evidence Artifacts
+## Inputs
 
-A run produces organized evidence:
+| Input              | Required | Default         | Description                                       |
+| ------------------ | -------: | --------------- | ------------------------------------------------- |
+| `github-token`     |      Yes | —               | Reads PR metadata and optionally posts the review |
+| `preview-url`      |      Yes | —               | Preview deployment URL                            |
+| `mode`             |       No | `deterministic` | `deterministic` or `assisted`                     |
+| `fail-on-severity` |       No | `high`          | `none`, `critical`, `high`, `medium`, `low`       |
+| `routes`           |       No | `/`             | Comma-separated approved routes                   |
+| `openai-api-key`   |       No | —               | Used only in assisted mode                        |
+| `openai-model`     |       No | `gpt-5.6-terra` | Model used in assisted mode                       |
+| `artifact-dir`     |       No | `.tabbyguard`   | Visual report/evidence directory                  |
+| `upload-artifacts` |       No | `true`          | Upload report/evidence to the workflow            |
+| `browser-channel`  |       No | `chrome`        | Installed browser channel                         |
+| `max-checks`       |       No | `16`            | Maximum targeted checks, 1–24                     |
+| `post-comment`     |       No | `true`          | Post/update the PR review                         |
+| `screenshot-mode`  |       No | `all`           | `all`, `failures`, or `none`                      |
 
-```text
-.tabbyguard/
-├── run_summary.json
-├── screenshots/
-│   └── *.png
-├── traces/
-│   └── *.zip
-├── logs/
-│   └── *.json
-└── a11y/
-    └── *.json
-```
+## Outputs
 
-Screenshots are captured when a check fails. Traces and raw logs preserve the underlying execution context.
-
-By default, TabbyGuard uploads this directory as a GitHub Actions artifact.
-
----
-
-## 🧪 Proof-Oriented Demo Fixtures
-
-The repository includes intentionally controlled browser fixtures:
-
-```text
-examples/demo-site/
-├── clean/
-├── overflow/
-├── a11y/
-├── runtime/
-├── dialog/
-└── keyboard/
-```
-
-They are designed to test both positive and negative behavior:
-
-| Fixture                          | Expected result         |
-| -------------------------------- | ----------------------- |
-| Clean page                       | No layout finding       |
-| Missing nav target on clean page | `skipped`, not a defect |
-| Mobile overflow                  | Layout finding          |
-| Accessibility regression         | Axe finding             |
-| Runtime exception                | Runtime finding         |
-| Broken Escape behavior           | Interaction finding     |
-| Blocked Tab progression          | Keyboard finding        |
-
-Run the fixture server locally:
-
-```bash
-node examples/demo-site/server.mjs
-```
-
-Then open:
-
-```text
-http://127.0.0.1:4173/clean
-http://127.0.0.1:4173/overflow
-http://127.0.0.1:4173/a11y
-http://127.0.0.1:4173/runtime
-http://127.0.0.1:4173/dialog
-http://127.0.0.1:4173/keyboard
-```
+| Output           | Meaning                                                     |
+| ---------------- | ----------------------------------------------------------- |
+| `result`         | `pass`, `warn`, or `fail`                                   |
+| `findings-count` | Total evidence-backed findings                              |
+| `critical-count` | Critical findings                                           |
+| `high-count`     | High findings                                               |
+| `medium-count`   | Medium findings                                             |
+| `low-count`      | Low findings                                                |
+| `run-summary`    | Path to `run_summary.json`                                  |
+| `report-path`    | Path to `report.html`                                       |
+| `evidence-path`  | Artifact/evidence directory                                 |
+| `artifact-id`    | GitHub artifact ID when uploaded                            |
+| `artifact-url`   | Direct GitHub URL for the uploaded report/evidence artifact |
 
 ---
 
-## 🧪 Test Strategy
+## GitHub-native reporting
 
-A QA tool should itself be tested.
+TabbyGuard deliberately distinguishes **workflow success** from **QA findings**.
 
-```text
-tests/
-├── unit/
-│   ├── risk-mapper.test.ts
-│   ├── findings.test.ts
-│   ├── severity.test.ts
-│   └── url.test.ts
-└── integration/
-    └── browser-fixtures.test.ts
-```
+For example, `fail-on-severity: none` can leave the workflow green while the summary still clearly displays `WARN` and finding counts. Findings are also emitted as GitHub annotations so they are visible without opening raw logs.
 
-The test suite checks:
-
-- Risk-map selection
-- Fail thresholds
-- Route resolution
-- Missing-target false-positive prevention
-- Clean fixture behavior
-- Mobile overflow detection
-- Runtime exception detection
-- Browser evidence generation
-
-The repository CI also rebuilds `dist/` and fails if the committed bundled action is out of date.
+When artifact upload succeeds, both the workflow summary and PR comment link directly to the visual report/evidence artifact.
 
 ---
 
-## 💬 GitHub-Native Reporting
+## Standalone planning
 
-TabbyGuard surfaces results in three places.
+When there is no pull request, TabbyGuard uses a bounded smoke plan per requested route:
 
-### Pull request comment
+- Mobile layout
+- Mobile accessibility
+- Desktop runtime
+- Desktop first-party network
+- Desktop keyboard progression
 
-A scannable review with severity, category, confidence reasons, changed-file correlation, and evidence paths.
-
-### GitHub Step Summary
-
-The workflow run gets a compact QA overview even when PR-comment permissions are unavailable.
-
-### Action outputs
-
-Other CI steps can respond to the result without parsing Markdown.
-
-```yaml
-- name: Run TabbyGuard
-  id: qa
-  uses: tabitha-dev/TabbyGuard@v2
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    preview-url: ${{ env.PREVIEW_URL }}
-
-- name: Print result
-  run: echo "${{ steps.qa.outputs.result }}"
-```
+In GitHub PR mode, changed files and bounded diff context continue to drive the more targeted risk mapper.
 
 ---
 
-## ⚙️ Configuration
+## Security and privacy
 
-| Input              | Required | Default         | Description                                    |
-| ------------------ | -------: | --------------- | ---------------------------------------------- |
-| `github-token`     |      Yes | —               | Reads PR metadata and posts the review         |
-| `preview-url`      |      Yes | —               | Preview deployment to test                     |
-| `mode`             |       No | `deterministic` | `deterministic` or `assisted`                  |
-| `fail-on-severity` |       No | `high`          | `none`, `critical`, `high`, `medium`, or `low` |
-| `routes`           |       No | `/`             | Comma-separated approved routes                |
-| `openai-api-key`   |       No | —               | Required only for assisted mode                |
-| `openai-model`     |       No | `gpt-5.6-terra` | Model used in assisted mode                    |
-| `artifact-dir`     |       No | `.tabbyguard`   | Local evidence directory                       |
-| `upload-artifacts` |       No | `true`          | Upload evidence to the workflow run            |
-| `browser-channel`  |       No | `chrome`        | Installed browser channel                      |
-| `max-checks`       |       No | `16`            | Maximum targeted browser checks, 1–24          |
-| `post-comment`     |       No | `true`          | Post/update the PR review                      |
-
-### Outputs
-
-| Output           | Meaning                             |
-| ---------------- | ----------------------------------- |
-| `result`         | `pass`, `warn`, or `fail`           |
-| `findings-count` | Total findings                      |
-| `critical-count` | Critical findings                   |
-| `high-count`     | High findings                       |
-| `medium-count`   | Medium findings                     |
-| `low-count`      | Low findings                        |
-| `run-summary`    | Path to `run_summary.json`          |
-| `evidence-path`  | Evidence directory                  |
-| `artifact-id`    | Uploaded artifact ID when available |
-
----
-
-## 🛡️ Security Design
-
-The normal workflow needs only:
-
-```yaml
-permissions:
-  contents: read
-  pull-requests: write
-```
-
-If `post-comment: false`, the action can operate without pull-request write access.
-
-Fork PRs commonly receive a read-only token. TabbyGuard treats comment failure as non-fatal and still exposes results through the Step Summary and action outputs.
-
-For hardened workflows, pin third-party actions to immutable commit SHAs rather than floating tags.
+- Deterministic mode sends no pull-request content to a model provider.
+- Evidence remains inside the configured local directory / GitHub Actions artifact.
+- The HTML report escapes website-controlled text before rendering it.
+- The report is self-contained and uses a restrictive Content Security Policy.
+- Third-party actions in this repository's own workflows are pinned to immutable commit SHAs.
+- Fork PR comment failures are non-fatal; the Actions summary and artifact remain available.
 
 See [`SECURITY.md`](./SECURITY.md) for more detail.
 
 ---
 
-## 🛠️ Tech Stack
-
-| Layer                    | Technology                                         |
-| ------------------------ | -------------------------------------------------- |
-| Language                 | TypeScript                                         |
-| Action runtime           | Composite wrapper + bundled Node 24 core           |
-| Browser automation       | Playwright Core                                    |
-| Browser on hosted runner | Installed Chrome                                   |
-| Accessibility            | Axe via `@axe-core/playwright`                     |
-| Schema validation        | Zod                                                |
-| GitHub integration       | GitHub Actions Toolkit / REST API                  |
-| Optional AI              | OpenAI Responses API + Structured Outputs          |
-| Tests                    | Vitest + real browser fixtures                     |
-| Evidence                 | Screenshots, traces, logs, JSON, Actions artifacts |
-
----
-
-## 📁 Repository Structure
+## Architecture
 
 ```text
-tabbyguard/
-├── .github/
-│   ├── workflows/
-│   │   ├── ci.yml
-│   │   ├── dependency-review.yml
-│   │   ├── release.yml
-│   │   └── self-test.yml
-│   └── dependabot.yml
-├── docs/
-│   ├── assets/
-│   ├── architecture.md
-│   └── testing.md
-├── examples/
-│   ├── demo-site/
-│   └── workflows/
-├── src/
-│   ├── ai/
-│   ├── browser/
-│   ├── github/
-│   ├── reporting/
-│   ├── risk/
-│   ├── schemas/
-│   └── util/
-├── tests/
-│   ├── integration/
-│   └── unit/
-├── scripts/
-│   └── build.mjs
-├── vendor/
-│   ├── README.md
-│   └── runtime-dependencies.js
-├── dist/
-│   ├── index.js
-│   └── licenses.txt
-├── action.yml
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-└── SECURITY.md
+                 ┌─────────────────────┐
+                 │   TabbyGuard Core   │
+                 └─────────┬───────────┘
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+      GitHub Action entry          Standalone CLI
+              │                         │
+      PR change context             URL + routes
+              └────────────┬────────────┘
+                           │
+                  risk / smoke plan
+                           │
+                  real browser checks
+                           │
+     passed / failed / skipped / inconclusive
+                           │
+               deterministic findings
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+  report.html       run_summary.json    raw evidence
+        │
+  GitHub summary + PR review + artifact link
 ```
+
+See [`docs/architecture.md`](./docs/architecture.md) for implementation notes.
 
 ---
 
-## 💻 Local Development
+## Testing
 
-```bash
-git clone https://github.com/tabitha-dev/tabbyguard.git
-cd tabbyguard
-npm install
-npm run check
-npm test
-npm run build
-```
+The repository includes controlled fixtures for:
+
+- clean layout
+- mobile overflow
+- accessibility regression
+- runtime exception
+- dialog Escape regression
+- keyboard focus regression
+
+Unit tests cover the risk mapper, severity thresholds, URL resolution, standalone planning, deterministic finding generation, and HTML-report escaping.
+
+Integration tests use a real browser and validate the fixture behaviors plus visual snapshot capture.
+
+The repository self-test also verifies that the action generates `report.html` and exposes a real artifact URL.
 
 Run everything expected before release:
 
 ```bash
+npm ci
 npm run verify
 ```
 
-Because `dist/` is the executable GitHub Action, release commits should include a freshly generated bundle.
+---
+
+## Release model
+
+Release tags use semantic versioning (`v3.0.0`, `v3.0.1`, ...).
+
+A release-tag workflow runs the full verification suite and, only after validation succeeds, moves the corresponding major tag (`v3`) to that tested release. Consumers can therefore use:
+
+```yaml
+uses: tabitha-dev/TabbyGuard@v3
+```
+
+or pin an exact release / immutable commit SHA in hardened environments.
 
 ---
 
-## 🧠 Engineering Decisions
+## Current boundaries
 
-### Why a composite wrapper around a bundled core?
+TabbyGuard is a targeted frontend QA layer. It does not replace:
 
-The consumer should get a one-step action without installing TabbyGuard's npm dependencies or compiling TypeScript. The bundled core handles QA execution, while the thin composite wrapper sets Node 24 and uploads evidence using pinned GitHub-maintained actions.
+- unit/component tests
+- full product E2E suites
+- manual accessibility review
+- pixel-baseline visual regression systems
+- security testing
+- product QA judgment
 
-### Why deterministic by default?
-
-CI should still be useful when a model API is unavailable, rate-limited, disabled, or intentionally not configured.
-
-### Why bounded diff context?
-
-The planner needs more than filenames, but sending or processing an unlimited pull-request diff creates unnecessary cost and noise. TabbyGuard caps per-file and total patch context.
-
-### Why first-party-only network findings?
-
-Third-party analytics, ads, fonts, and telemetry can fail for reasons unrelated to the pull request. Promoting them automatically creates noisy QA.
-
-### Why no visual-regression claim?
-
-TabbyGuard captures screenshots as evidence, but V2 does not claim pixel-diff visual regression without an explicit baseline system.
-
-### Why `skipped` and `inconclusive`?
-
-An automation tool needs a way to say, “I do not have enough evidence.” Treating uncertainty as failure is one of the fastest ways to make CI ignored.
+Visual snapshots are evidence, not pixel-diff baseline comparisons.
 
 ---
 
-## ⚠️ Current Boundaries
-
-TabbyGuard is deliberately focused.
-
-It does **not** replace:
-
-- Unit/component tests
-- Full end-to-end business-flow suites
-- Manual accessibility testing
-- Cross-browser compatibility matrices
-- Pixel-baseline visual regression systems
-- Security testing
-- Product QA judgment
-
-It adds a targeted browser-review layer to the pull request process.
-
----
-
-## 🗺️ Roadmap
-
-Possible future additions:
-
-- Route discovery from framework manifests
-- Component-to-route mapping adapters
-- Baseline-aware visual comparison
-- Optional multi-browser execution
-- Richer changed-DOM correlation
-- SARIF/check annotations for supported finding types
-- Reusable organization-level policy presets
-
-The roadmap follows the same constraint as the current product: new automation should increase signal without turning uncertainty into noise.
-
----
-
-## 📄 License
+## License
 
 MIT — see [`LICENSE`](./LICENSE).
-
----
-
-<div align="center">
-
-### 🛡️ TabbyGuard
-
-**Evidence-driven frontend QA for pull requests.**
-
-> **No evidence, no finding.**
-
-</div>

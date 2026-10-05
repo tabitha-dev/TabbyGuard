@@ -1,10 +1,36 @@
 {
-  "name": "tabbyguard-action",
-  "version": "2.0.0",
-  "description": "Evidence-driven frontend QA for pull requests.",
-  "private": true,
+  "name": "tabbyguard",
+  "version": "3.0.0",
+  "description": "Evidence-driven frontend QA with browser checks, GitHub PR reporting, and a self-contained visual report.",
+  "license": "MIT",
   "type": "commonjs",
   "main": "dist/index.js",
+  "bin": {
+    "tabbyguard": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "action.yml",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tabitha-dev/TabbyGuard.git"
+  },
+  "homepage": "https://github.com/tabitha-dev/TabbyGuard#readme",
+  "bugs": {
+    "url": "https://github.com/tabitha-dev/TabbyGuard/issues"
+  },
+  "keywords": [
+    "frontend",
+    "qa",
+    "playwright",
+    "github-actions",
+    "accessibility",
+    "visual-testing",
+    "browser-testing"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "tsc --noEmit",

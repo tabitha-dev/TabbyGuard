@@ -58,3 +58,11 @@ export function readMaxChecks(): number {
     throw new Error("max-checks must be an integer from 1 to 24");
   return raw;
 }
+
+export function readScreenshotMode(): "failures" | "all" | "none" {
+  const value = readInput("screenshot-mode") || "all";
+  if (!["failures", "all", "none"].includes(value)) {
+    throw new Error("screenshot-mode must be failures, all, or none");
+  }
+  return value as "failures" | "all" | "none";
+}

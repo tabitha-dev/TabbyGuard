@@ -133,3 +133,73 @@ export function createDeterministicPlan(
 
   return dedupe(plan).slice(0, maxChecks);
 }
+
+export function createStandalonePlan(
+  routes: string[],
+  maxChecks = 16,
+): TestPlanItem[] {
+  const requestedRoutes = routes.length > 0 ? routes : ["/"];
+  const plan: TestPlanItem[] = [];
+
+  for (const route of requestedRoutes) {
+    const normalized = route || "/";
+    const routeId = slugify(normalized === "/" ? "home" : normalized);
+    const items: TestPlanItem[] = [
+      {
+        id: `${routeId}-mobile-layout`,
+        targetSurface: "Rendered page",
+        route: normalized,
+        viewport: "mobile",
+        checkType: "layout",
+        reason: "Standalone smoke test for responsive overflow.",
+        changedFiles: [],
+        selectors: [],
+      },
+      {
+        id: `${routeId}-mobile-a11y`,
+        targetSurface: "Rendered page",
+        route: normalized,
+        viewport: "mobile",
+        checkType: "accessibility",
+        reason:
+          "Standalone smoke test for serious automated accessibility issues.",
+        changedFiles: [],
+        selectors: [],
+      },
+      {
+        id: `${routeId}-desktop-runtime`,
+        targetSurface: "Rendered page",
+        route: normalized,
+        viewport: "desktop",
+        checkType: "runtime",
+        reason: "Standalone smoke test for browser runtime errors.",
+        changedFiles: [],
+        selectors: [],
+      },
+      {
+        id: `${routeId}-desktop-network`,
+        targetSurface: "Rendered page",
+        route: normalized,
+        viewport: "desktop",
+        checkType: "network",
+        reason: "Standalone smoke test for failed first-party requests.",
+        changedFiles: [],
+        selectors: [],
+      },
+      {
+        id: `${routeId}-desktop-keyboard`,
+        targetSurface: "Rendered page",
+        route: normalized,
+        viewport: "desktop",
+        checkType: "keyboard",
+        reason: "Standalone smoke test for basic keyboard focus progression.",
+        changedFiles: [],
+        selectors: [],
+      },
+    ];
+    plan.push(...items);
+    if (plan.length >= maxChecks) break;
+  }
+
+  return plan.slice(0, maxChecks);
+}

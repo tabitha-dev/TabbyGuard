@@ -17,6 +17,7 @@ export function getCurrentPrContext(previewUrl: string): PRContext {
   const owner = github.context.repo.owner;
   const repo = github.context.repo.repo;
   return {
+    kind: "github",
     owner,
     repo,
     repoFullName: `${owner}/${repo}`,

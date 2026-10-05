@@ -24,26 +24,50 @@ import { resolveTargetUrl } from "./url.js";
 
 async function ensureRunnerDirs(artifactDir: string): Promise<void> {
   await Promise.all(
-    ["screenshots", "traces", "logs", "a11y"].map((name) =>
+    ["screenshots", "snapshots", "traces", "logs", "a11y"].map((name) =>
       fs.mkdir(path.join(artifactDir, name), { recursive: true }),
     ),
   );
+}
+
+function localBrowserCandidates(): string[] {
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  const localAppData = process.env.LOCALAPPDATA || "";
+  const programFiles = process.env.PROGRAMFILES || "";
+  const programFilesX86 = process.env["PROGRAMFILES(X86)"] || "";
+
+  return [
+    process.env.CHROME_PATH,
+    process.env.CHROMIUM_PATH,
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    home
+      ? path.join(
+          home,
+          "Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        )
+      : "",
+    localAppData
+      ? path.join(localAppData, "Google/Chrome/Application/chrome.exe")
+      : "",
+    programFiles
+      ? path.join(programFiles, "Google/Chrome/Application/chrome.exe")
+      : "",
+    programFilesX86
+      ? path.join(programFilesX86, "Google/Chrome/Application/chrome.exe")
+      : "",
+  ].filter((value): value is string => Boolean(value));
 }
 
 async function launchBrowser(channel: string): Promise<Browser> {
   try {
     return await chromium.launch({ headless: true, channel });
   } catch (channelError) {
-    const candidates = [
-      process.env.CHROME_PATH,
-      process.env.CHROMIUM_PATH,
-      "/usr/bin/google-chrome",
-      "/usr/bin/google-chrome-stable",
-      "/usr/bin/chromium",
-      "/usr/bin/chromium-browser",
-    ].filter((value): value is string => Boolean(value));
-
-    for (const executablePath of candidates) {
+    for (const executablePath of localBrowserCandidates()) {
       try {
         await fs.access(executablePath);
         return await chromium.launch({ headless: true, executablePath });
@@ -53,8 +77,7 @@ async function launchBrowser(channel: string): Promise<Browser> {
     }
 
     throw new Error(
-      `TabbyGuard could not launch browser channel "${channel}". GitHub-hosted Ubuntu runners include Chrome. ` +
-        `On a self-hosted runner, install Chrome/Chromium or set CHROME_PATH/CHROMIUM_PATH. ` +
+      `TabbyGuard could not launch browser channel "${channel}". Install Chrome/Chromium or set CHROME_PATH/CHROMIUM_PATH. ` +
         `Original error: ${channelError instanceof Error ? channelError.message : String(channelError)}`,
     );
   }
@@ -98,12 +121,17 @@ function statusForCheck(
   }
 }
 
+function posixPath(...parts: string[]): string {
+  return path.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
+}
+
 export async function runBrowserChecks(
   options: BrowserRunOptions,
 ): Promise<BrowserCheckResult[]> {
   await ensureRunnerDirs(options.artifactDir);
   const browser = await launchBrowser(options.browserChannel);
   const results: BrowserCheckResult[] = [];
+  const capturedSnapshots = new Set<string>();
 
   try {
     for (const item of options.testPlan) {
@@ -111,14 +139,20 @@ export async function runBrowserChecks(
       const url = resolveTargetUrl(options.previewUrl, item.route);
       const size = viewportSize(item.viewport);
       const slug = slugify(`${item.id}-${item.viewport}-${item.checkType}`);
-      const tracePath = path.join(options.artifactDir, "traces", `${slug}.zip`);
-      const screenshotPath = path.join(
-        options.artifactDir,
-        "screenshots",
-        `${slug}.png`,
+      const traceRel = posixPath("traces", `${slug}.zip`);
+      const screenshotRel = posixPath("screenshots", `${slug}.png`);
+      const logRel = posixPath("logs", `${slug}.json`);
+      const a11yRel = posixPath("a11y", `${slug}.json`);
+      const snapshotKey = `${item.route ?? "/"}:${item.viewport}`;
+      const snapshotRel = posixPath(
+        "snapshots",
+        `${slugify(`${item.route ?? "home"}-${item.viewport}`)}.png`,
       );
-      const logPath = path.join(options.artifactDir, "logs", `${slug}.json`);
-      const a11yPath = path.join(options.artifactDir, "a11y", `${slug}.json`);
+      const tracePath = path.join(options.artifactDir, traceRel);
+      const screenshotPath = path.join(options.artifactDir, screenshotRel);
+      const logPath = path.join(options.artifactDir, logRel);
+      const a11yPath = path.join(options.artifactDir, a11yRel);
+      const snapshotPath = path.join(options.artifactDir, snapshotRel);
       const consoleMessages: ConsoleRecord[] = [];
       const pageErrors: string[] = [];
       const networkFailures: NetworkFailure[] = [];
@@ -157,8 +191,9 @@ export async function runBrowserChecks(
         });
       });
       page.on("response", (response: Response) => {
-        if (response.status() < 500 || !isFirstParty(response.url(), url))
+        if (response.status() < 500 || !isFirstParty(response.url(), url)) {
           return;
+        }
         networkFailures.push({
           url: response.url(),
           method: response.request().method(),
@@ -179,12 +214,29 @@ export async function runBrowserChecks(
           );
         }
 
+        if (
+          options.screenshotMode === "all" &&
+          !capturedSnapshots.has(snapshotKey)
+        ) {
+          try {
+            await page.screenshot({ path: snapshotPath, fullPage: true });
+            capturedSnapshots.add(snapshotKey);
+            evidence.push({
+              type: "screenshot",
+              localPath: snapshotRel,
+              note: "Visual snapshot",
+            });
+          } catch {
+            notes.push("Visual snapshot could not be captured.");
+          }
+        }
+
         if (item.checkType === "accessibility") {
           axeViolations = await runA11yScan(page);
           await writeJson(a11yPath, axeViolations);
           evidence.push({
             type: "json",
-            localPath: a11yPath,
+            localPath: a11yRel,
             note: "Axe accessibility scan",
           });
         } else if (item.checkType === "layout") {
@@ -209,30 +261,34 @@ export async function runBrowserChecks(
         };
         status = statusForCheck(rawWithoutStatus);
 
-        if (status === "failed") {
+        if (status === "failed" && options.screenshotMode !== "none") {
           await page.screenshot({ path: screenshotPath, fullPage: true });
           evidence.push({
             type: "screenshot",
-            localPath: screenshotPath,
+            localPath: screenshotRel,
             note: `${item.viewport} failure evidence`,
           });
         }
       } catch (error) {
         status = "failed";
         pageErrors.push(error instanceof Error ? error.message : String(error));
-        await page
-          .screenshot({ path: screenshotPath, fullPage: true })
-          .catch(() => undefined);
-        evidence.push({
-          type: "screenshot",
-          localPath: screenshotPath,
-          note: "Navigation or check failure evidence",
-        });
+        if (options.screenshotMode !== "none") {
+          try {
+            await page.screenshot({ path: screenshotPath, fullPage: true });
+            evidence.push({
+              type: "screenshot",
+              localPath: screenshotRel,
+              note: "Navigation or check failure evidence",
+            });
+          } catch {
+            notes.push("Failure screenshot could not be captured.");
+          }
+        }
       } finally {
         await context.tracing.stop({ path: tracePath }).catch(() => undefined);
         evidence.push({
           type: "trace",
-          localPath: tracePath,
+          localPath: traceRel,
           note: "Playwright trace",
         });
 
@@ -252,7 +308,7 @@ export async function runBrowserChecks(
         await writeJson(logPath, raw);
         evidence.push({
           type: "log",
-          localPath: logPath,
+          localPath: logRel,
           note: "Raw browser check log",
         });
         await context.close().catch(() => undefined);
