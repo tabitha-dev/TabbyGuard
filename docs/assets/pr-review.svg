@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-labelledby="title desc">
+  <title id="title">Example TabbyGuard pull request review</title><desc id="desc">A mock pull request review showing two evidence-backed findings and check results.</desc>
+  <rect width="1100" height="720" rx="24" fill="#0f172a"/>
+  <rect x="38" y="38" width="1024" height="644" rx="18" fill="#fff"/>
+  <g font-family="ui-sans-serif,system-ui" fill="#111827">
+    <text x="80" y="100" font-size="34" font-weight="800">🛡️ TabbyGuard</text><text x="80" y="135" font-size="19" fill="#64748b">Evidence-driven frontend QA</text>
+    <text x="80" y="190" font-size="25" font-weight="800" fill="#b45309">⚠ 2 evidence-backed findings</text>
+    <text x="80" y="224" font-size="17" fill="#475569">0 critical · 0 high · 2 medium · 0 low</text>
+    <line x1="80" y1="252" x2="1020" y2="252" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="80" y="286" width="940" height="130" rx="14" fill="#fffbeb" stroke="#f59e0b"/>
+    <text x="108" y="326" font-size="20" font-weight="800" fill="#92400e">🟡 MEDIUM · Layout</text>
+    <text x="108" y="360" font-size="22" font-weight="700">Horizontal overflow at mobile viewport</text>
+    <text x="108" y="390" font-size="17" fill="#475569">.wide-card extends to 768px in a 390px viewport</text>
+    <rect x="80" y="440" width="940" height="130" rx="14" fill="#fffbeb" stroke="#f59e0b"/>
+    <text x="108" y="480" font-size="20" font-weight="800" fill="#92400e">🟡 MEDIUM · Accessibility</text>
+    <text x="108" y="514" font-size="22" font-weight="700">Accessibility: button-name</text>
+    <text x="108" y="544" font-size="17" fill="#475569">Axe reproduced the rule on 1 node · evidence attached</text>
+    <text x="80" y="620" font-size="18" font-weight="700" fill="#166534">✓ 11 passed</text><text x="220" y="620" font-size="18" fill="#64748b">· 2 skipped · 0 inconclusive · 2 findings</text>
+    <text x="80" y="655" font-size="16" font-style="italic" fill="#64748b">No evidence, no finding.</text>
+  </g>
+</svg>

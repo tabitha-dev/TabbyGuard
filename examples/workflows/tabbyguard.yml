@@ -1,0 +1,19 @@
+name: TabbyGuard
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  frontend-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run TabbyGuard
+        uses: tabitha-dev/tabbyguard@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          preview-url: ${{ vars.PREVIEW_URL }}
+          fail-on-severity: high
