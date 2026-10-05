@@ -199,7 +199,7 @@ let bundle = await fs.readFile(vendorBasePath, "utf8");
 // patches. This keeps the build working on Windows, macOS, Linux, and CI.
 bundle = bundle.replace(/\r\n/g, "\n");
 
-bundle = bundle.replace(/^require\('\.\/sourcemap-register\.js'\);/, "");
+bundle = bundle.replace(/^require\('\.\/sourcemap-register\.js'\);/m, "");
 
 // ncc turns Playwright's dynamic JSON loader into an empty context. Restore only
 // the metadata needed for browser startup while retaining native JSON loading as
