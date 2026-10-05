@@ -49,6 +49,7 @@ jobs:
       - name: Finalize V3 branch
         shell: bash
         run: |
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/dependency-review.yml .github/workflows/self-test.yml
           rm -rf .v3-payload
           rm -f .github/workflows/apply-v3.yml
           rm -f .github/workflows/release.yml
