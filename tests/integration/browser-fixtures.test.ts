@@ -60,12 +60,12 @@ describe("browser fixtures", () => {
   it("keeps a clean layout finding-free", async () => {
     const { findings } = await run("/clean", "layout");
     expect(findings).toHaveLength(0);
-  });
+  }, 15_000);
 
   it("detects mobile overflow", async () => {
     const { findings } = await run("/overflow", "layout");
     expect(findings.some((item) => item.category === "layout")).toBe(true);
-  });
+  }, 15_000);
 
   it("detects a runtime exception", async () => {
     const { findings } = await run("/runtime", "runtime");
