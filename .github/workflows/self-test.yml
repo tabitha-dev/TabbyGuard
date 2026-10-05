@@ -9,9 +9,9 @@ permissions:
 
 jobs:
   self-test:
-    name: Detect known frontend regression
+    name: Validate known regression and visual report
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Check out repository
@@ -34,15 +34,20 @@ jobs:
           fail-on-severity: none
           post-comment: "false"
           upload-artifacts: "true"
+          screenshot-mode: all
 
-      - name: Assert TabbyGuard found the known defect
+      - name: Assert result, report, and artifact
         shell: bash
         run: |
           COUNT="${{ steps.tabbyguard.outputs.findings-count }}"
           RESULT="${{ steps.tabbyguard.outputs.result }}"
+          ARTIFACT_URL="${{ steps.tabbyguard.outputs.artifact-url }}"
+          REPORT="${{ steps.tabbyguard.outputs.report-path }}"
 
           echo "findings-count=$COUNT"
           echo "result=$RESULT"
+          echo "artifact-url=$ARTIFACT_URL"
+          echo "report-path=$REPORT"
 
           if [ -z "$COUNT" ] || [ "$COUNT" -lt 1 ]; then
             echo "::error::TabbyGuard did not detect the intentionally broken overflow fixture."
@@ -51,6 +56,21 @@ jobs:
 
           if [ "$RESULT" = "pass" ]; then
             echo "::error::TabbyGuard reported pass even though the overflow fixture contains a known defect."
+            exit 1
+          fi
+
+          if [ ! -f "$REPORT" ]; then
+            echo "::error::TabbyGuard did not generate report.html."
+            exit 1
+          fi
+
+          if ! grep -q "Visual review" "$REPORT"; then
+            echo "::error::The generated report does not contain the visual review UI."
+            exit 1
+          fi
+
+          if [ -z "$ARTIFACT_URL" ]; then
+            echo "::error::TabbyGuard did not expose an artifact URL."
             exit 1
           fi
 
