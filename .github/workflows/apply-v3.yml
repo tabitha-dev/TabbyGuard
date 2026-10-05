@@ -50,6 +50,7 @@ jobs:
         run: |
           rm -rf .v3-payload
           rm -f .github/workflows/apply-v3.yml
+          rm -f .github/workflows/release.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
