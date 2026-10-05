@@ -1,1 +1,22 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Keyboard fixture</title></head><body><main><h1>Broken keyboard fixture</h1><button id="one">One</button><button id="two">Two</button></main><script>document.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();document.querySelector('#one').focus()}})</script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Keyboard fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Broken keyboard fixture</h1>
+      <button id="one">One</button><button id="two">Two</button>
+    </main>
+    <script>
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          document.querySelector("#one").focus();
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,21 +1,32 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { chromium, type Browser, type ConsoleMessage, type Request, type Response } from 'playwright-core';
-import type { CheckStatus } from '../schemas/run-summary.js';
-import { viewportSize } from '../schemas/test-plan.js';
-import { slugify, writeJson } from '../util/fs.js';
-import { runA11yScan } from './a11y.js';
-import { runInteractionProbe } from './interaction.js';
-import { runKeyboardProbe } from './keyboard.js';
-import { inspectLayout } from './layout.js';
-import type { BrowserCheckResult, BrowserRunOptions, ConsoleRecord, NetworkFailure } from './types.js';
-import { resolveTargetUrl } from './url.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import {
+  chromium,
+  type Browser,
+  type ConsoleMessage,
+  type Request,
+  type Response,
+} from "playwright-core";
+import type { CheckStatus } from "../schemas/run-summary.js";
+import { viewportSize } from "../schemas/test-plan.js";
+import { slugify, writeJson } from "../util/fs.js";
+import { runA11yScan } from "./a11y.js";
+import { runInteractionProbe } from "./interaction.js";
+import { runKeyboardProbe } from "./keyboard.js";
+import { inspectLayout } from "./layout.js";
+import type {
+  BrowserCheckResult,
+  BrowserRunOptions,
+  ConsoleRecord,
+  NetworkFailure,
+} from "./types.js";
+import { resolveTargetUrl } from "./url.js";
 
 async function ensureRunnerDirs(artifactDir: string): Promise<void> {
   await Promise.all(
-    ['screenshots', 'traces', 'logs', 'a11y'].map((name) =>
-      fs.mkdir(path.join(artifactDir, name), { recursive: true })
-    )
+    ["screenshots", "traces", "logs", "a11y"].map((name) =>
+      fs.mkdir(path.join(artifactDir, name), { recursive: true }),
+    ),
   );
 }
 
@@ -26,10 +37,10 @@ async function launchBrowser(channel: string): Promise<Browser> {
     const candidates = [
       process.env.CHROME_PATH,
       process.env.CHROMIUM_PATH,
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable',
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser'
+      "/usr/bin/google-chrome",
+      "/usr/bin/google-chrome-stable",
+      "/usr/bin/chromium",
+      "/usr/bin/chromium-browser",
     ].filter((value): value is string => Boolean(value));
 
     for (const executablePath of candidates) {
@@ -44,7 +55,7 @@ async function launchBrowser(channel: string): Promise<Browser> {
     throw new Error(
       `TabbyGuard could not launch browser channel "${channel}". GitHub-hosted Ubuntu runners include Chrome. ` +
         `On a self-hosted runner, install Chrome/Chromium or set CHROME_PATH/CHROMIUM_PATH. ` +
-        `Original error: ${channelError instanceof Error ? channelError.message : String(channelError)}`
+        `Original error: ${channelError instanceof Error ? channelError.message : String(channelError)}`,
     );
   }
 }
@@ -57,28 +68,39 @@ function isFirstParty(candidate: string, target: string): boolean {
   }
 }
 
-function statusForCheck(result: Omit<BrowserCheckResult, 'status' | 'durationMs' | 'evidence'>): CheckStatus {
+function statusForCheck(
+  result: Omit<BrowserCheckResult, "status" | "durationMs" | "evidence">,
+): CheckStatus {
   switch (result.item.checkType) {
-    case 'runtime':
-      return result.pageErrors.length > 0 || result.consoleMessages.some((record) => record.type === 'error')
-        ? 'failed'
-        : 'passed';
-    case 'network':
-      return result.networkFailures.length > 0 ? 'failed' : 'passed';
-    case 'accessibility':
-      return result.axeViolations.some((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))
-        ? 'failed'
-        : 'passed';
-    case 'layout':
-      return result.layout?.hasHorizontalOverflow ? 'failed' : result.layout ? 'passed' : 'inconclusive';
-    case 'interaction':
-      return result.interaction?.status ?? 'inconclusive';
-    case 'keyboard':
-      return result.keyboard?.status ?? 'inconclusive';
+    case "runtime":
+      return result.pageErrors.length > 0 ||
+        result.consoleMessages.some((record) => record.type === "error")
+        ? "failed"
+        : "passed";
+    case "network":
+      return result.networkFailures.length > 0 ? "failed" : "passed";
+    case "accessibility":
+      return result.axeViolations.some((violation) =>
+        ["critical", "serious"].includes(violation.impact ?? ""),
+      )
+        ? "failed"
+        : "passed";
+    case "layout":
+      return result.layout?.hasHorizontalOverflow
+        ? "failed"
+        : result.layout
+          ? "passed"
+          : "inconclusive";
+    case "interaction":
+      return result.interaction?.status ?? "inconclusive";
+    case "keyboard":
+      return result.keyboard?.status ?? "inconclusive";
   }
 }
 
-export async function runBrowserChecks(options: BrowserRunOptions): Promise<BrowserCheckResult[]> {
+export async function runBrowserChecks(
+  options: BrowserRunOptions,
+): Promise<BrowserCheckResult[]> {
   await ensureRunnerDirs(options.artifactDir);
   const browser = await launchBrowser(options.browserChannel);
   const results: BrowserCheckResult[] = [];
@@ -89,65 +111,87 @@ export async function runBrowserChecks(options: BrowserRunOptions): Promise<Brow
       const url = resolveTargetUrl(options.previewUrl, item.route);
       const size = viewportSize(item.viewport);
       const slug = slugify(`${item.id}-${item.viewport}-${item.checkType}`);
-      const tracePath = path.join(options.artifactDir, 'traces', `${slug}.zip`);
-      const screenshotPath = path.join(options.artifactDir, 'screenshots', `${slug}.png`);
-      const logPath = path.join(options.artifactDir, 'logs', `${slug}.json`);
-      const a11yPath = path.join(options.artifactDir, 'a11y', `${slug}.json`);
+      const tracePath = path.join(options.artifactDir, "traces", `${slug}.zip`);
+      const screenshotPath = path.join(
+        options.artifactDir,
+        "screenshots",
+        `${slug}.png`,
+      );
+      const logPath = path.join(options.artifactDir, "logs", `${slug}.json`);
+      const a11yPath = path.join(options.artifactDir, "a11y", `${slug}.json`);
       const consoleMessages: ConsoleRecord[] = [];
       const pageErrors: string[] = [];
       const networkFailures: NetworkFailure[] = [];
       const notes: string[] = [];
-      const evidence: BrowserCheckResult['evidence'] = [];
+      const evidence: BrowserCheckResult["evidence"] = [];
       const context = await browser.newContext({ viewport: size });
       const page = await context.newPage();
-      let axeViolations: BrowserCheckResult['axeViolations'] = [];
-      let layout: BrowserCheckResult['layout'];
-      let interaction: BrowserCheckResult['interaction'];
-      let keyboard: BrowserCheckResult['keyboard'];
-      let status: CheckStatus = 'inconclusive';
+      let axeViolations: BrowserCheckResult["axeViolations"] = [];
+      let layout: BrowserCheckResult["layout"];
+      let interaction: BrowserCheckResult["interaction"];
+      let keyboard: BrowserCheckResult["keyboard"];
+      let status: CheckStatus = "inconclusive";
 
-      await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+      await context.tracing.start({
+        screenshots: true,
+        snapshots: true,
+        sources: true,
+      });
 
-      page.on('console', (message: ConsoleMessage) => {
-        if (message.type() === 'error' || message.type() === 'warning') {
-          consoleMessages.push({ type: message.type(), text: message.text(), location: message.location()?.url });
+      page.on("console", (message: ConsoleMessage) => {
+        if (message.type() === "error" || message.type() === "warning") {
+          consoleMessages.push({
+            type: message.type(),
+            text: message.text(),
+            location: message.location()?.url,
+          });
         }
       });
-      page.on('pageerror', (error: Error) => pageErrors.push(error.message));
-      page.on('requestfailed', (request: Request) => {
+      page.on("pageerror", (error: Error) => pageErrors.push(error.message));
+      page.on("requestfailed", (request: Request) => {
         if (!isFirstParty(request.url(), url)) return;
         networkFailures.push({
           url: request.url(),
           method: request.method(),
-          failureText: request.failure()?.errorText
+          failureText: request.failure()?.errorText,
         });
       });
-      page.on('response', (response: Response) => {
-        if (response.status() < 500 || !isFirstParty(response.url(), url)) return;
+      page.on("response", (response: Response) => {
+        if (response.status() < 500 || !isFirstParty(response.url(), url))
+          return;
         networkFailures.push({
           url: response.url(),
           method: response.request().method(),
-          status: response.status()
+          status: response.status(),
         });
       });
 
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: 30_000,
+        });
         try {
-          await page.waitForLoadState('networkidle', { timeout: 4_000 });
+          await page.waitForLoadState("networkidle", { timeout: 4_000 });
         } catch {
-          notes.push('Network did not become idle within 4 seconds; checks continued.');
+          notes.push(
+            "Network did not become idle within 4 seconds; checks continued.",
+          );
         }
 
-        if (item.checkType === 'accessibility') {
+        if (item.checkType === "accessibility") {
           axeViolations = await runA11yScan(page);
           await writeJson(a11yPath, axeViolations);
-          evidence.push({ type: 'json', localPath: a11yPath, note: 'Axe accessibility scan' });
-        } else if (item.checkType === 'layout') {
+          evidence.push({
+            type: "json",
+            localPath: a11yPath,
+            note: "Axe accessibility scan",
+          });
+        } else if (item.checkType === "layout") {
           layout = await inspectLayout(page);
-        } else if (item.checkType === 'interaction') {
+        } else if (item.checkType === "interaction") {
           interaction = await runInteractionProbe(page, item);
-        } else if (item.checkType === 'keyboard') {
+        } else if (item.checkType === "keyboard") {
           keyboard = await runKeyboardProbe(page);
         }
 
@@ -161,22 +205,36 @@ export async function runBrowserChecks(options: BrowserRunOptions): Promise<Brow
           layout,
           interaction,
           keyboard,
-          notes
+          notes,
         };
         status = statusForCheck(rawWithoutStatus);
 
-        if (status === 'failed') {
+        if (status === "failed") {
           await page.screenshot({ path: screenshotPath, fullPage: true });
-          evidence.push({ type: 'screenshot', localPath: screenshotPath, note: `${item.viewport} failure evidence` });
+          evidence.push({
+            type: "screenshot",
+            localPath: screenshotPath,
+            note: `${item.viewport} failure evidence`,
+          });
         }
       } catch (error) {
-        status = 'failed';
+        status = "failed";
         pageErrors.push(error instanceof Error ? error.message : String(error));
-        await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
-        evidence.push({ type: 'screenshot', localPath: screenshotPath, note: 'Navigation or check failure evidence' });
+        await page
+          .screenshot({ path: screenshotPath, fullPage: true })
+          .catch(() => undefined);
+        evidence.push({
+          type: "screenshot",
+          localPath: screenshotPath,
+          note: "Navigation or check failure evidence",
+        });
       } finally {
         await context.tracing.stop({ path: tracePath }).catch(() => undefined);
-        evidence.push({ type: 'trace', localPath: tracePath, note: 'Playwright trace' });
+        evidence.push({
+          type: "trace",
+          localPath: tracePath,
+          note: "Playwright trace",
+        });
 
         const raw = {
           item,
@@ -189,10 +247,14 @@ export async function runBrowserChecks(options: BrowserRunOptions): Promise<Brow
           layout,
           interaction,
           keyboard,
-          notes
+          notes,
         };
         await writeJson(logPath, raw);
-        evidence.push({ type: 'log', localPath: logPath, note: 'Raw browser check log' });
+        evidence.push({
+          type: "log",
+          localPath: logPath,
+          note: "Raw browser check log",
+        });
         await context.close().catch(() => undefined);
       }
 
@@ -209,7 +271,7 @@ export async function runBrowserChecks(options: BrowserRunOptions): Promise<Brow
         interaction,
         keyboard,
         evidence,
-        notes
+        notes,
       });
     }
   } finally {

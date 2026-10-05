@@ -1,81 +1,81 @@
-name: 'TabbyGuard'
-description: 'Evidence-driven frontend QA for pull requests'
-author: 'Tabitha Khadse'
+name: "TabbyGuard"
+description: "Evidence-driven frontend QA for pull requests"
+author: "Tabitha Khadse"
 
 inputs:
   github-token:
-    description: 'GitHub token used to read PR metadata and post the TabbyGuard review'
+    description: "GitHub token used to read PR metadata and post the TabbyGuard review"
     required: true
   preview-url:
-    description: 'Preview deployment URL to test'
+    description: "Preview deployment URL to test"
     required: true
   mode:
-    description: 'deterministic or assisted'
+    description: "deterministic or assisted"
     required: false
-    default: 'deterministic'
+    default: "deterministic"
   fail-on-severity:
-    description: 'none, critical, high, medium, or low'
+    description: "none, critical, high, medium, or low"
     required: false
-    default: 'high'
+    default: "high"
   openai-api-key:
-    description: 'Optional OpenAI API key used only in assisted mode'
+    description: "Optional OpenAI API key used only in assisted mode"
     required: false
   openai-model:
-    description: 'OpenAI model used in assisted mode'
+    description: "OpenAI model used in assisted mode"
     required: false
-    default: 'gpt-5.6-terra'
+    default: "gpt-5.6-terra"
   routes:
-    description: 'Optional comma-separated routes to prioritize'
+    description: "Optional comma-separated routes to prioritize"
     required: false
-    default: '/'
+    default: "/"
   artifact-dir:
-    description: 'Directory for screenshots, traces, logs, and run_summary.json'
+    description: "Directory for screenshots, traces, logs, and run_summary.json"
     required: false
-    default: '.tabbyguard'
+    default: ".tabbyguard"
   upload-artifacts:
-    description: 'Upload TabbyGuard evidence as a GitHub Actions artifact'
+    description: "Upload TabbyGuard evidence as a GitHub Actions artifact"
     required: false
-    default: 'true'
+    default: "true"
   browser-channel:
-    description: 'Installed browser channel to use'
+    description: "Installed browser channel to use"
     required: false
-    default: 'chrome'
+    default: "chrome"
   max-checks:
-    description: 'Maximum number of targeted browser checks (1-24)'
+    description: "Maximum number of targeted browser checks (1-24)"
     required: false
-    default: '16'
+    default: "16"
   post-comment:
-    description: 'Post or update the TabbyGuard pull request comment'
+    description: "Post or update the TabbyGuard pull request comment"
     required: false
-    default: 'true'
+    default: "true"
 
 outputs:
   result:
-    description: 'pass, warn, or fail'
+    description: "pass, warn, or fail"
     value: ${{ steps.guard.outputs.result }}
   findings-count:
-    description: 'Total evidence-backed findings'
+    description: "Total evidence-backed findings"
     value: ${{ steps.guard.outputs.findings-count }}
   critical-count:
-    description: 'Critical findings'
+    description: "Critical findings"
     value: ${{ steps.guard.outputs.critical-count }}
   high-count:
-    description: 'High findings'
+    description: "High findings"
     value: ${{ steps.guard.outputs.high-count }}
   medium-count:
-    description: 'Medium findings'
+    description: "Medium findings"
     value: ${{ steps.guard.outputs.medium-count }}
   low-count:
-    description: 'Low findings'
+    description: "Low findings"
     value: ${{ steps.guard.outputs.low-count }}
   run-summary:
-    description: 'Path to run_summary.json'
+    description: "Path to run_summary.json"
     value: ${{ steps.guard.outputs.run-summary }}
   evidence-path:
-    description: 'Directory containing TabbyGuard evidence'
+    description: "Directory containing TabbyGuard evidence"
     value: ${{ steps.guard.outputs.evidence-path }}
   artifact-id:
-    description: 'Uploaded evidence artifact ID when upload is enabled'
+    description: "Uploaded evidence artifact ID when upload is enabled"
     value: ${{ steps.upload.outputs.artifact-id }}
 
 runs:
@@ -84,7 +84,7 @@ runs:
     - name: Use Node.js 24
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
-        node-version: '24'
+        node-version: "24"
     - name: Run TabbyGuard
       id: guard
       shell: bash

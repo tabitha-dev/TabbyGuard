@@ -230415,104 +230415,173 @@ exports.enrichFindings = enrichFindings;
 const test_plan_js_1 = __nccwpck_require__(99021);
 const fs_js_1 = __nccwpck_require__(99022);
 const planJsonSchema = {
-    type: 'object', additionalProperties: false, required: ['testPlan'], properties: {
-        testPlan: { type: 'array', minItems: 1, maxItems: 24, items: {
-                type: 'object', additionalProperties: false,
-                required: ['id', 'targetSurface', 'route', 'viewport', 'checkType', 'reason', 'changedFiles', 'selectors'],
+    type: "object",
+    additionalProperties: false,
+    required: ["testPlan"],
+    properties: {
+        testPlan: {
+            type: "array",
+            minItems: 1,
+            maxItems: 24,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: [
+                    "id",
+                    "targetSurface",
+                    "route",
+                    "viewport",
+                    "checkType",
+                    "reason",
+                    "changedFiles",
+                    "selectors",
+                ],
                 properties: {
-                    id: { type: 'string' }, targetSurface: { type: 'string' }, route: { type: ['string', 'null'] },
-                    viewport: { type: 'string', enum: ['mobile', 'tablet', 'desktop'] },
-                    checkType: { type: 'string', enum: ['runtime', 'network', 'accessibility', 'layout', 'interaction', 'keyboard'] },
-                    reason: { type: 'string' }, changedFiles: { type: 'array', items: { type: 'string' } },
-                    selectors: { type: 'array', items: { type: 'string' } }
-                }
-            } }
-    }
+                    id: { type: "string" },
+                    targetSurface: { type: "string" },
+                    route: { type: ["string", "null"] },
+                    viewport: { type: "string", enum: ["mobile", "tablet", "desktop"] },
+                    checkType: {
+                        type: "string",
+                        enum: [
+                            "runtime",
+                            "network",
+                            "accessibility",
+                            "layout",
+                            "interaction",
+                            "keyboard",
+                        ],
+                    },
+                    reason: { type: "string" },
+                    changedFiles: { type: "array", items: { type: "string" } },
+                    selectors: { type: "array", items: { type: "string" } },
+                },
+            },
+        },
+    },
 };
 const enrichmentJsonSchema = {
-    type: 'object', additionalProperties: false, required: ['enrichments'], properties: {
-        enrichments: { type: 'array', items: {
-                type: 'object', additionalProperties: false, required: ['findingId', 'suggestedCause'], properties: {
-                    findingId: { type: 'string' }, suggestedCause: { type: 'string' }
-                }
-            } }
-    }
+    type: "object",
+    additionalProperties: false,
+    required: ["enrichments"],
+    properties: {
+        enrichments: {
+            type: "array",
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["findingId", "suggestedCause"],
+                properties: {
+                    findingId: { type: "string" },
+                    suggestedCause: { type: "string" },
+                },
+            },
+        },
+    },
 };
 function extractResponseText(payload) {
-    if (typeof payload?.output_text === 'string')
+    if (typeof payload?.output_text === "string")
         return payload.output_text;
     for (const item of payload?.output ?? []) {
-        if (item?.type !== 'message')
+        if (item?.type !== "message")
             continue;
         for (const content of item.content ?? []) {
-            if (content?.type === 'output_text' && typeof content.text === 'string')
+            if (content?.type === "output_text" && typeof content.text === "string")
                 return content.text;
         }
     }
     return undefined;
 }
 async function callStructuredResponse(options) {
-    const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${options.apiKey}`, 'Content-Type': 'application/json' },
+    const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${options.apiKey}`,
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({
             model: options.model,
             input: [
-                { role: 'system', content: options.system },
-                { role: 'user', content: JSON.stringify(options.user) }
+                { role: "system", content: options.system },
+                { role: "user", content: JSON.stringify(options.user) },
             ],
-            text: { format: { type: 'json_schema', name: options.schemaName, strict: true, schema: options.schema } }
-        })
+            text: {
+                format: {
+                    type: "json_schema",
+                    name: options.schemaName,
+                    strict: true,
+                    schema: options.schema,
+                },
+            },
+        }),
     });
-    const payload = await response.json();
+    const payload = (await response.json());
     if (!response.ok)
         throw new Error(`OpenAI Responses API returned ${response.status}: ${JSON.stringify(payload).slice(0, 800)}`);
     const text = extractResponseText(payload);
     if (!text)
-        throw new Error('OpenAI response did not contain structured output text.');
+        throw new Error("OpenAI response did not contain structured output text.");
     return JSON.parse(text);
 }
 async function createAssistedPlan(options) {
     const raw = await callStructuredResponse({
-        apiKey: options.apiKey, model: options.model, schemaName: 'tabbyguard_test_plan', schema: planJsonSchema,
+        apiKey: options.apiKey,
+        model: options.model,
+        schemaName: "tabbyguard_test_plan",
+        schema: planJsonSchema,
         system: [
-            'You are a senior frontend QA planner for TabbyGuard.',
-            'Use only supplied changed files, bounded patch context, and allowed routes.',
-            'Choose a small set of high-signal browser checks.',
-            'Never plan destructive flows such as purchase, deletion, billing, account mutation, or real form submission.',
-            'A missing selector is not a bug. The browser evidence engine decides whether a finding exists.'
-        ].join('\n'),
-        user: { allowedRoutes: options.routes, changedFiles: options.changedFiles, deterministicFallback: options.fallbackPlan }
+            "You are a senior frontend QA planner for TabbyGuard.",
+            "Use only supplied changed files, bounded patch context, and allowed routes.",
+            "Choose a small set of high-signal browser checks.",
+            "Never plan destructive flows such as purchase, deletion, billing, account mutation, or real form submission.",
+            "A missing selector is not a bug. The browser evidence engine decides whether a finding exists.",
+        ].join("\n"),
+        user: {
+            allowedRoutes: options.routes,
+            changedFiles: options.changedFiles,
+            deterministicFallback: options.fallbackPlan,
+        },
     });
     const parsed = test_plan_js_1.TestPlanSchema.parse(raw);
     const knownFiles = new Set(options.changedFiles.map((file) => file.filename));
     const allowedRoutes = new Set(options.routes);
-    return parsed.testPlan.slice(0, options.maxChecks).map((item, index) => ({
+    return parsed.testPlan
+        .slice(0, options.maxChecks)
+        .map((item, index) => ({
         ...item,
         id: (0, fs_js_1.slugify)(`${index}-${item.targetSurface}-${item.viewport}-${item.checkType}`),
-        route: item.route && allowedRoutes.has(item.route) ? item.route : options.routes[0] ?? '/',
+        route: item.route && allowedRoutes.has(item.route)
+            ? item.route
+            : (options.routes[0] ?? "/"),
         changedFiles: item.changedFiles.filter((name) => knownFiles.has(name)),
-        selectors: item.selectors.slice(0, 8)
+        selectors: item.selectors.slice(0, 8),
     }));
 }
 async function enrichFindings(options) {
     if (options.findings.length === 0)
         return options.findings;
-    const raw = await callStructuredResponse({
-        apiKey: options.apiKey, model: options.model, schemaName: 'tabbyguard_finding_enrichment', schema: enrichmentJsonSchema,
+    const raw = (await callStructuredResponse({
+        apiKey: options.apiKey,
+        model: options.model,
+        schemaName: "tabbyguard_finding_enrichment",
+        schema: enrichmentJsonSchema,
         system: [
-            'You explain existing TabbyGuard findings.',
-            'Refine only the suggested cause for a supplied finding ID.',
-            'Do not add/remove findings or change severity/confidence. Do not claim facts not present in evidence.'
-        ].join('\n'),
-        user: { findings: options.findings, changedFiles: options.changedFiles }
-    });
+            "You explain existing TabbyGuard findings.",
+            "Refine only the suggested cause for a supplied finding ID.",
+            "Do not add/remove findings or change severity/confidence. Do not claim facts not present in evidence.",
+        ].join("\n"),
+        user: { findings: options.findings, changedFiles: options.changedFiles },
+    }));
     const enrichments = new Map();
     for (const item of raw?.enrichments ?? []) {
-        if (typeof item?.findingId === 'string' && typeof item?.suggestedCause === 'string')
+        if (typeof item?.findingId === "string" &&
+            typeof item?.suggestedCause === "string")
             enrichments.set(item.findingId, item.suggestedCause);
     }
-    return options.findings.map((finding) => ({ ...finding, suggestedCause: enrichments.get(finding.id) ?? finding.suggestedCause }));
+    return options.findings.map((finding) => ({
+        ...finding,
+        suggestedCause: enrichments.get(finding.id) ?? finding.suggestedCause,
+    }));
 }
 
 /***/ }),
@@ -230525,14 +230594,14 @@ exports.runA11yScan = runA11yScan;
 const playwright_1 = __nccwpck_require__(2579);
 async function runA11yScan(page) {
     const results = await new playwright_1.AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
     return results.violations.map((violation) => ({
         id: violation.id,
         impact: violation.impact,
         description: violation.description,
         help: violation.help,
-        nodes: violation.nodes.length
+        nodes: violation.nodes.length,
     }));
 }
 
@@ -230547,24 +230616,29 @@ const selector_js_1 = __nccwpck_require__(99006);
 const MENU_SELECTORS = [
     'button[aria-label*="menu" i]',
     'button[aria-label*="navigation" i]',
-    'button[aria-expanded]',
+    "button[aria-expanded]",
     '[data-testid*="menu" i]',
     '[data-testid*="nav" i] button',
-    'button:has-text("Menu")'
+    'button:has-text("Menu")',
 ];
 const DIALOG_TRIGGER_SELECTORS = [
     'button:has-text("Open")',
     'button:has-text("Details")',
     'button:has-text("View")',
     '[data-testid*="modal-trigger" i]',
-    '[data-testid*="dialog-trigger" i]'
+    '[data-testid*="dialog-trigger" i]',
 ];
-const FORM_SELECTORS = ['form input:not([type="hidden"])', 'form textarea', 'form select'];
+const FORM_SELECTORS = [
+    'form input:not([type="hidden"])',
+    "form textarea",
+    "form select",
+];
 async function firstVisible(page, selectors) {
     for (const selector of selectors) {
         const locator = page.locator(selector).first();
         try {
-            if ((await locator.count()) > 0 && (await locator.isVisible({ timeout: 500 })))
+            if ((await locator.count()) > 0 &&
+                (await locator.isVisible({ timeout: 500 })))
                 return { selector, locator };
         }
         catch {
@@ -230578,130 +230652,145 @@ async function runInteractionProbe(page, item) {
     const failures = [];
     const surface = `${item.targetSurface} ${item.reason}`.toLowerCase();
     const focusBefore = await (0, selector_js_1.describeActiveElement)(page);
-    if (surface.includes('nav') || surface.includes('menu') || surface.includes('header')) {
-        const target = await firstVisible(page, [...item.selectors, ...MENU_SELECTORS]);
+    if (surface.includes("nav") ||
+        surface.includes("menu") ||
+        surface.includes("header")) {
+        const target = await firstVisible(page, [
+            ...item.selectors,
+            ...MENU_SELECTORS,
+        ]);
         if (!target) {
             return {
-                status: 'skipped',
-                kind: 'navigation',
+                status: "skipped",
+                kind: "navigation",
                 attempted,
                 failures,
-                reason: 'No safe visible navigation trigger was identified, so no defect was inferred.',
-                focusBefore
+                reason: "No safe visible navigation trigger was identified, so no defect was inferred.",
+                focusBefore,
             };
         }
         attempted.push(`click ${target.selector}`);
         await target.locator.click({ timeout: 2_000 });
         await page.waitForTimeout(150);
-        attempted.push('press Escape');
-        await page.keyboard.press('Escape');
+        attempted.push("press Escape");
+        await page.keyboard.press("Escape");
         return {
-            status: 'passed',
-            kind: 'navigation',
+            status: "passed",
+            kind: "navigation",
             attempted,
             failures,
-            reason: 'A visible navigation trigger accepted a click and Escape without a browser error.',
+            reason: "A visible navigation trigger accepted a click and Escape without a browser error.",
             focusBefore,
-            focusAfter: await (0, selector_js_1.describeActiveElement)(page)
+            focusAfter: await (0, selector_js_1.describeActiveElement)(page),
         };
     }
-    if (surface.includes('modal') || surface.includes('dialog') || surface.includes('overlay')) {
+    if (surface.includes("modal") ||
+        surface.includes("dialog") ||
+        surface.includes("overlay")) {
         const target = await firstVisible(page, DIALOG_TRIGGER_SELECTORS);
         if (!target) {
             return {
-                status: 'skipped',
-                kind: 'dialog',
+                status: "skipped",
+                kind: "dialog",
                 attempted,
                 failures,
-                reason: 'No safe visible dialog trigger was identified, so no defect was inferred.',
-                focusBefore
+                reason: "No safe visible dialog trigger was identified, so no defect was inferred.",
+                focusBefore,
             };
         }
         attempted.push(`click ${target.selector}`);
         await target.locator.click({ timeout: 2_000 });
         await page.waitForTimeout(150);
-        const dialog = page.locator('[role="dialog"], dialog, [aria-modal="true"]').first();
-        if ((await dialog.count()) === 0 || !(await dialog.isVisible().catch(() => false))) {
-            failures.push('A dialog trigger was clicked, but no visible dialog appeared.');
+        const dialog = page
+            .locator('[role="dialog"], dialog, [aria-modal="true"]')
+            .first();
+        if ((await dialog.count()) === 0 ||
+            !(await dialog.isVisible().catch(() => false))) {
+            failures.push("A dialog trigger was clicked, but no visible dialog appeared.");
             return {
-                status: 'failed',
-                kind: 'dialog',
+                status: "failed",
+                kind: "dialog",
                 attempted,
                 failures,
                 reason: failures[0],
                 focusBefore,
-                focusAfter: await (0, selector_js_1.describeActiveElement)(page)
+                focusAfter: await (0, selector_js_1.describeActiveElement)(page),
             };
         }
-        attempted.push('press Escape');
-        await page.keyboard.press('Escape');
+        attempted.push("press Escape");
+        await page.keyboard.press("Escape");
         await page.waitForTimeout(100);
         if (await dialog.isVisible().catch(() => false)) {
-            failures.push('The visible dialog remained open after Escape.');
+            failures.push("The visible dialog remained open after Escape.");
             return {
-                status: 'failed',
-                kind: 'dialog',
+                status: "failed",
+                kind: "dialog",
                 attempted,
                 failures,
                 reason: failures[0],
                 focusBefore,
-                focusAfter: await (0, selector_js_1.describeActiveElement)(page)
+                focusAfter: await (0, selector_js_1.describeActiveElement)(page),
             };
         }
         return {
-            status: 'passed',
-            kind: 'dialog',
+            status: "passed",
+            kind: "dialog",
             attempted,
             failures,
-            reason: 'A dialog opened and closed with Escape.',
+            reason: "A dialog opened and closed with Escape.",
             focusBefore,
-            focusAfter: await (0, selector_js_1.describeActiveElement)(page)
+            focusAfter: await (0, selector_js_1.describeActiveElement)(page),
         };
     }
-    if (surface.includes('form') || surface.includes('input') || surface.includes('checkout')) {
-        const target = await firstVisible(page, [...item.selectors, ...FORM_SELECTORS]);
+    if (surface.includes("form") ||
+        surface.includes("input") ||
+        surface.includes("checkout")) {
+        const target = await firstVisible(page, [
+            ...item.selectors,
+            ...FORM_SELECTORS,
+        ]);
         if (!target) {
             return {
-                status: 'skipped',
-                kind: 'form',
+                status: "skipped",
+                kind: "form",
                 attempted,
                 failures,
-                reason: 'No safe visible form field was identified, so no defect was inferred.',
-                focusBefore
+                reason: "No safe visible form field was identified, so no defect was inferred.",
+                focusBefore,
             };
         }
         attempted.push(`focus ${target.selector}`);
         await target.locator.focus({ timeout: 2_000 });
         const focusAfter = await (0, selector_js_1.describeActiveElement)(page);
-        if (focusAfter === focusBefore || focusAfter === 'body') {
-            failures.push('A visible form control could not receive focus.');
+        if (focusAfter === focusBefore || focusAfter === "body") {
+            failures.push("A visible form control could not receive focus.");
             return {
-                status: 'failed',
-                kind: 'form',
+                status: "failed",
+                kind: "form",
                 attempted,
                 failures,
                 reason: failures[0],
                 focusBefore,
-                focusAfter
+                focusAfter,
             };
         }
         return {
-            status: 'passed',
-            kind: 'form',
+            status: "passed",
+            kind: "form",
             attempted,
             failures,
-            reason: 'A visible form control received focus successfully.',
+            reason: "A visible form control received focus successfully.",
             focusBefore,
-            focusAfter
+            focusAfter,
         };
     }
     return {
-        status: 'inconclusive',
-        kind: 'generic',
+        status: "inconclusive",
+        kind: "generic",
         attempted,
         failures,
-        reason: 'The changed surface did not map to a safe interaction probe.',
-        focusBefore
+        reason: "The changed surface did not map to a safe interaction probe.",
+        focusBefore,
     };
 }
 
@@ -230720,7 +230809,11 @@ async function visibleFocusableCount(page) {
             const el = node;
             const rect = el.getBoundingClientRect();
             const style = getComputedStyle(el);
-            return !el.hasAttribute('disabled') && style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+            return (!el.hasAttribute("disabled") &&
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                rect.width > 0 &&
+                rect.height > 0);
         }).length;
     });
 }
@@ -230728,28 +230821,30 @@ async function runKeyboardProbe(page) {
     const focusableCount = await visibleFocusableCount(page);
     if (focusableCount < 2) {
         return {
-            status: 'inconclusive',
+            status: "inconclusive",
             focusSequence: [await (0, selector_js_1.describeActiveElement)(page)],
-            reason: 'Fewer than two visible focusable elements were present, so a focus-order defect was not inferred.'
+            reason: "Fewer than two visible focusable elements were present, so a focus-order defect was not inferred.",
         };
     }
     const sequence = [await (0, selector_js_1.describeActiveElement)(page)];
-    await page.keyboard.press('Tab');
+    await page.keyboard.press("Tab");
     sequence.push(await (0, selector_js_1.describeActiveElement)(page));
-    await page.keyboard.press('Tab');
+    await page.keyboard.press("Tab");
     sequence.push(await (0, selector_js_1.describeActiveElement)(page));
-    const useful = sequence.slice(1).filter((value) => value !== 'body' && value !== 'html' && value !== 'none');
+    const useful = sequence
+        .slice(1)
+        .filter((value) => value !== "body" && value !== "html" && value !== "none");
     if (useful.length < 2 || new Set(useful).size < 2) {
         return {
-            status: 'failed',
+            status: "failed",
             focusSequence: sequence,
-            reason: `The page contains ${focusableCount} visible focusable elements, but repeated Tab presses did not advance focus between them.`
+            reason: `The page contains ${focusableCount} visible focusable elements, but repeated Tab presses did not advance focus between them.`,
         };
     }
     return {
-        status: 'passed',
+        status: "passed",
         focusSequence: sequence,
-        reason: 'Keyboard focus advanced between visible interactive elements.'
+        reason: "Keyboard focus advanced between visible interactive elements.",
     };
 }
 
@@ -230764,11 +230859,14 @@ async function inspectLayout(page) {
     return page.evaluate(() => {
         const viewportWidth = window.innerWidth;
         const documentWidth = Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth ?? 0);
-        const offenders = Array.from(document.querySelectorAll('body *'))
+        const offenders = Array.from(document.querySelectorAll("body *"))
             .map((el) => {
             const rect = el.getBoundingClientRect();
             const style = window.getComputedStyle(el);
-            const visible = style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+            const visible = style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                rect.width > 0 &&
+                rect.height > 0;
             return { el, rect, visible };
         })
             .filter(({ rect, visible }) => visible && (rect.left < -1 || rect.right > viewportWidth + 1))
@@ -230777,24 +230875,24 @@ async function inspectLayout(page) {
             const element = el;
             const selector = element.id
                 ? `#${element.id}`
-                : element.getAttribute('data-testid')
-                    ? `[data-testid="${element.getAttribute('data-testid')}"]`
-                    : element.className && typeof element.className === 'string'
-                        ? `${element.tagName.toLowerCase()}.${element.className.split(/\s+/).filter(Boolean).slice(0, 2).join('.')}`
+                : element.getAttribute("data-testid")
+                    ? `[data-testid="${element.getAttribute("data-testid")}"]`
+                    : element.className && typeof element.className === "string"
+                        ? `${element.tagName.toLowerCase()}.${element.className.split(/\s+/).filter(Boolean).slice(0, 2).join(".")}`
                         : element.tagName.toLowerCase();
             return {
                 selector,
                 width: Math.round(rect.width),
                 left: Math.round(rect.left),
                 right: Math.round(rect.right),
-                text: element.innerText?.trim().slice(0, 80)
+                text: element.innerText?.trim().slice(0, 80),
             };
         });
         return {
             hasHorizontalOverflow: documentWidth > viewportWidth + 1 || offenders.length > 0,
             documentWidth,
             viewportWidth,
-            offenders
+            offenders,
         };
     });
 }
@@ -230820,7 +230918,7 @@ const keyboard_js_1 = __nccwpck_require__(99003);
 const layout_js_1 = __nccwpck_require__(99004);
 const url_js_1 = __nccwpck_require__(99008);
 async function ensureRunnerDirs(artifactDir) {
-    await Promise.all(['screenshots', 'traces', 'logs', 'a11y'].map((name) => promises_1.default.mkdir(node_path_1.default.join(artifactDir, name), { recursive: true })));
+    await Promise.all(["screenshots", "traces", "logs", "a11y"].map((name) => promises_1.default.mkdir(node_path_1.default.join(artifactDir, name), { recursive: true })));
 }
 async function launchBrowser(channel) {
     try {
@@ -230830,10 +230928,10 @@ async function launchBrowser(channel) {
         const candidates = [
             process.env.CHROME_PATH,
             process.env.CHROMIUM_PATH,
-            '/usr/bin/google-chrome',
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/chromium',
-            '/usr/bin/chromium-browser'
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
         ].filter((value) => Boolean(value));
         for (const executablePath of candidates) {
             try {
@@ -230859,22 +230957,27 @@ function isFirstParty(candidate, target) {
 }
 function statusForCheck(result) {
     switch (result.item.checkType) {
-        case 'runtime':
-            return result.pageErrors.length > 0 || result.consoleMessages.some((record) => record.type === 'error')
-                ? 'failed'
-                : 'passed';
-        case 'network':
-            return result.networkFailures.length > 0 ? 'failed' : 'passed';
-        case 'accessibility':
-            return result.axeViolations.some((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))
-                ? 'failed'
-                : 'passed';
-        case 'layout':
-            return result.layout?.hasHorizontalOverflow ? 'failed' : result.layout ? 'passed' : 'inconclusive';
-        case 'interaction':
-            return result.interaction?.status ?? 'inconclusive';
-        case 'keyboard':
-            return result.keyboard?.status ?? 'inconclusive';
+        case "runtime":
+            return result.pageErrors.length > 0 ||
+                result.consoleMessages.some((record) => record.type === "error")
+                ? "failed"
+                : "passed";
+        case "network":
+            return result.networkFailures.length > 0 ? "failed" : "passed";
+        case "accessibility":
+            return result.axeViolations.some((violation) => ["critical", "serious"].includes(violation.impact ?? ""))
+                ? "failed"
+                : "passed";
+        case "layout":
+            return result.layout?.hasHorizontalOverflow
+                ? "failed"
+                : result.layout
+                    ? "passed"
+                    : "inconclusive";
+        case "interaction":
+            return result.interaction?.status ?? "inconclusive";
+        case "keyboard":
+            return result.keyboard?.status ?? "inconclusive";
     }
 }
 async function runBrowserChecks(options) {
@@ -230887,10 +230990,10 @@ async function runBrowserChecks(options) {
             const url = (0, url_js_1.resolveTargetUrl)(options.previewUrl, item.route);
             const size = (0, test_plan_js_1.viewportSize)(item.viewport);
             const slug = (0, fs_js_1.slugify)(`${item.id}-${item.viewport}-${item.checkType}`);
-            const tracePath = node_path_1.default.join(options.artifactDir, 'traces', `${slug}.zip`);
-            const screenshotPath = node_path_1.default.join(options.artifactDir, 'screenshots', `${slug}.png`);
-            const logPath = node_path_1.default.join(options.artifactDir, 'logs', `${slug}.json`);
-            const a11yPath = node_path_1.default.join(options.artifactDir, 'a11y', `${slug}.json`);
+            const tracePath = node_path_1.default.join(options.artifactDir, "traces", `${slug}.zip`);
+            const screenshotPath = node_path_1.default.join(options.artifactDir, "screenshots", `${slug}.png`);
+            const logPath = node_path_1.default.join(options.artifactDir, "logs", `${slug}.json`);
+            const a11yPath = node_path_1.default.join(options.artifactDir, "a11y", `${slug}.json`);
             const consoleMessages = [];
             const pageErrors = [];
             const networkFailures = [];
@@ -230902,52 +231005,67 @@ async function runBrowserChecks(options) {
             let layout;
             let interaction;
             let keyboard;
-            let status = 'inconclusive';
-            await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
-            page.on('console', (message) => {
-                if (message.type() === 'error' || message.type() === 'warning') {
-                    consoleMessages.push({ type: message.type(), text: message.text(), location: message.location()?.url });
+            let status = "inconclusive";
+            await context.tracing.start({
+                screenshots: true,
+                snapshots: true,
+                sources: true,
+            });
+            page.on("console", (message) => {
+                if (message.type() === "error" || message.type() === "warning") {
+                    consoleMessages.push({
+                        type: message.type(),
+                        text: message.text(),
+                        location: message.location()?.url,
+                    });
                 }
             });
-            page.on('pageerror', (error) => pageErrors.push(error.message));
-            page.on('requestfailed', (request) => {
+            page.on("pageerror", (error) => pageErrors.push(error.message));
+            page.on("requestfailed", (request) => {
                 if (!isFirstParty(request.url(), url))
                     return;
                 networkFailures.push({
                     url: request.url(),
                     method: request.method(),
-                    failureText: request.failure()?.errorText
+                    failureText: request.failure()?.errorText,
                 });
             });
-            page.on('response', (response) => {
+            page.on("response", (response) => {
                 if (response.status() < 500 || !isFirstParty(response.url(), url))
                     return;
                 networkFailures.push({
                     url: response.url(),
                     method: response.request().method(),
-                    status: response.status()
+                    status: response.status(),
                 });
             });
             try {
-                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+                await page.goto(url, {
+                    waitUntil: "domcontentloaded",
+                    timeout: 30_000,
+                });
                 try {
-                    await page.waitForLoadState('networkidle', { timeout: 4_000 });
+                    await page.waitForLoadState("networkidle", { timeout: 4_000 });
                 }
                 catch {
-                    notes.push('Network did not become idle within 4 seconds; checks continued.');
+                    notes.push("Network did not become idle within 4 seconds; checks continued.");
                 }
-                if (item.checkType === 'accessibility') {
+                if (item.checkType === "accessibility") {
                     axeViolations = await (0, a11y_js_1.runA11yScan)(page);
                     await (0, fs_js_1.writeJson)(a11yPath, axeViolations);
-                    evidence.push({ type: 'json', localPath: a11yPath, note: 'Axe accessibility scan' });
+                    evidence.push({
+                        type: "json",
+                        localPath: a11yPath,
+                        note: "Axe accessibility scan",
+                    });
                 }
-                else if (item.checkType === 'layout') {
+                else if (item.checkType === "layout") {
                     layout = await (0, layout_js_1.inspectLayout)(page);
                 }
-                else if (item.checkType === 'interaction') {
+                else if (item.checkType === "interaction") {
                     interaction = await (0, interaction_js_1.runInteractionProbe)(page, item);
                 }
-                else if (item.checkType === 'keyboard') {
+                else if (item.checkType === "keyboard") {
                     keyboard = await (0, keyboard_js_1.runKeyboardProbe)(page);
                 }
                 const rawWithoutStatus = {
@@ -230960,23 +231078,37 @@ async function runBrowserChecks(options) {
                     layout,
                     interaction,
                     keyboard,
-                    notes
+                    notes,
                 };
                 status = statusForCheck(rawWithoutStatus);
-                if (status === 'failed') {
+                if (status === "failed") {
                     await page.screenshot({ path: screenshotPath, fullPage: true });
-                    evidence.push({ type: 'screenshot', localPath: screenshotPath, note: `${item.viewport} failure evidence` });
+                    evidence.push({
+                        type: "screenshot",
+                        localPath: screenshotPath,
+                        note: `${item.viewport} failure evidence`,
+                    });
                 }
             }
             catch (error) {
-                status = 'failed';
+                status = "failed";
                 pageErrors.push(error instanceof Error ? error.message : String(error));
-                await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => undefined);
-                evidence.push({ type: 'screenshot', localPath: screenshotPath, note: 'Navigation or check failure evidence' });
+                await page
+                    .screenshot({ path: screenshotPath, fullPage: true })
+                    .catch(() => undefined);
+                evidence.push({
+                    type: "screenshot",
+                    localPath: screenshotPath,
+                    note: "Navigation or check failure evidence",
+                });
             }
             finally {
                 await context.tracing.stop({ path: tracePath }).catch(() => undefined);
-                evidence.push({ type: 'trace', localPath: tracePath, note: 'Playwright trace' });
+                evidence.push({
+                    type: "trace",
+                    localPath: tracePath,
+                    note: "Playwright trace",
+                });
                 const raw = {
                     item,
                     url,
@@ -230988,10 +231120,14 @@ async function runBrowserChecks(options) {
                     layout,
                     interaction,
                     keyboard,
-                    notes
+                    notes,
                 };
                 await (0, fs_js_1.writeJson)(logPath, raw);
-                evidence.push({ type: 'log', localPath: logPath, note: 'Raw browser check log' });
+                evidence.push({
+                    type: "log",
+                    localPath: logPath,
+                    note: "Raw browser check log",
+                });
                 await context.close().catch(() => undefined);
             }
             results.push({
@@ -231007,7 +231143,7 @@ async function runBrowserChecks(options) {
                 interaction,
                 keyboard,
                 evidence,
-                notes
+                notes,
             });
         }
     }
@@ -231028,11 +231164,15 @@ async function describeActiveElement(page) {
     return page.evaluate(() => {
         const el = document.activeElement;
         if (!el)
-            return 'none';
+            return "none";
         const tag = el.tagName.toLowerCase();
-        const id = el.id ? `#${el.id}` : '';
-        const aria = el.getAttribute('aria-label') ? `[aria-label="${el.getAttribute('aria-label')}"]` : '';
-        const testid = el.getAttribute('data-testid') ? `[data-testid="${el.getAttribute('data-testid')}"]` : '';
+        const id = el.id ? `#${el.id}` : "";
+        const aria = el.getAttribute("aria-label")
+            ? `[aria-label="${el.getAttribute("aria-label")}"]`
+            : "";
+        const testid = el.getAttribute("data-testid")
+            ? `[data-testid="${el.getAttribute("data-testid")}"]`
+            : "";
         return `${tag}${id}${aria}${testid}`;
     });
 }
@@ -231052,17 +231192,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveTargetUrl = resolveTargetUrl;
 function resolveTargetUrl(previewUrl, route) {
-    if (!route || route.trim() === '' || route === '/') {
+    if (!route || route.trim() === "" || route === "/") {
         const parsed = new URL(previewUrl);
-        if (route === '/')
-            parsed.pathname = '/';
+        if (route === "/")
+            parsed.pathname = "/";
         return parsed.toString();
     }
     try {
         return new URL(route).toString();
     }
     catch {
-        return new URL(route.startsWith('/') ? route : `/${route}`, previewUrl).toString();
+        return new URL(route.startsWith("/") ? route : `/${route}`, previewUrl).toString();
     }
 }
 
@@ -231113,7 +231253,7 @@ async function postOrUpdatePrComment(client, context, body, marker) {
             owner: context.owner,
             repo: context.repo,
             issue_number: context.prNumber,
-            per_page: 100
+            per_page: 100,
         });
         const existing = comments.find((comment) => comment.body?.includes(marker));
         if (existing) {
@@ -231121,7 +231261,7 @@ async function postOrUpdatePrComment(client, context, body, marker) {
                 owner: context.owner,
                 repo: context.repo,
                 comment_id: existing.id,
-                body
+                body,
             });
         }
         else {
@@ -231129,7 +231269,7 @@ async function postOrUpdatePrComment(client, context, body, marker) {
                 owner: context.owner,
                 repo: context.repo,
                 issue_number: context.prNumber,
-                body
+                body,
             });
         }
         return true;
@@ -231192,7 +231332,7 @@ function getOctokit(token) {
 function getCurrentPrContext(previewUrl) {
     const pullRequest = github.context.payload.pull_request;
     if (!pullRequest)
-        throw new Error('TabbyGuard must run in a pull_request workflow context.');
+        throw new Error("TabbyGuard must run in a pull_request workflow context.");
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
     return {
@@ -231202,9 +231342,9 @@ function getCurrentPrContext(previewUrl) {
         prNumber: pullRequest.number,
         commitSha: pullRequest.head?.sha ?? github.context.sha,
         previewUrl,
-        runId: Number(process.env.GITHUB_RUN_ID || '0') || undefined,
-        runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT || '0') || undefined,
-        serverUrl: process.env.GITHUB_SERVER_URL ?? 'https://github.com'
+        runId: Number(process.env.GITHUB_RUN_ID || "0") || undefined,
+        runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT || "0") || undefined,
+        serverUrl: process.env.GITHUB_SERVER_URL ?? "https://github.com",
     };
 }
 async function getChangedFiles(client, context) {
@@ -231218,7 +231358,7 @@ async function getChangedFiles(client, context) {
         owner: context.owner,
         repo: context.repo,
         pull_number: context.prNumber,
-        per_page: 100
+        per_page: 100,
     });
     const changes = files.map((file) => ({
         filename: file.filename,
@@ -231226,7 +231366,7 @@ async function getChangedFiles(client, context) {
         additions: file.additions,
         deletions: file.deletions,
         changes: file.changes,
-        patch: file.patch
+        patch: file.patch,
     }));
     core.info(`Found ${changes.length} changed file(s); bounded diff context will be used for risk planning.`);
     return (0, change_js_1.boundedChanges)(changes);
@@ -231290,29 +231430,29 @@ const input_js_1 = __nccwpck_require__(99023);
 const severity_js_1 = __nccwpck_require__(99024);
 async function main() {
     const started = Date.now();
-    const githubToken = (0, input_js_1.readInput)('github-token', true);
-    const previewUrl = (0, input_js_1.readInput)('preview-url', true);
+    const githubToken = (0, input_js_1.readInput)("github-token", true);
+    const previewUrl = (0, input_js_1.readInput)("preview-url", true);
     new URL(previewUrl);
     const mode = (0, input_js_1.readMode)();
     const failOnSeverity = (0, input_js_1.readFailOnSeverity)();
     const routes = (0, input_js_1.readRoutes)();
     const maxChecks = (0, input_js_1.readMaxChecks)();
-    const openaiApiKey = (0, input_js_1.readInput)('openai-api-key');
-    const model = (0, input_js_1.readInput)('openai-model') || 'gpt-5.6-terra';
-    const artifactDir = node_path_1.default.resolve((0, input_js_1.readInput)('artifact-dir') || '.tabbyguard');
-    const browserChannel = (0, input_js_1.readInput)('browser-channel') || 'chrome';
-    const postComment = (0, input_js_1.readBoolean)('post-comment', true);
-    const commentMarker = '<!-- tabbyguard-review -->';
+    const openaiApiKey = (0, input_js_1.readInput)("openai-api-key");
+    const model = (0, input_js_1.readInput)("openai-model") || "gpt-5.6-terra";
+    const artifactDir = node_path_1.default.resolve((0, input_js_1.readInput)("artifact-dir") || ".tabbyguard");
+    const browserChannel = (0, input_js_1.readInput)("browser-channel") || "chrome";
+    const postComment = (0, input_js_1.readBoolean)("post-comment", true);
+    const commentMarker = "<!-- tabbyguard-review -->";
     await (0, fs_js_1.ensureDir)(artifactDir);
     const client = (0, pr_context_js_1.getOctokit)(githubToken);
     const context = (0, pr_context_js_1.getCurrentPrContext)(previewUrl);
     const changedFiles = await (0, pr_context_js_1.getChangedFiles)(client, context);
     const fallbackPlan = (0, mapper_js_1.createDeterministicPlan)(changedFiles, routes, maxChecks);
     let testPlan = fallbackPlan;
-    let modelUsed = 'none';
-    if (mode === 'assisted') {
+    let modelUsed = "none";
+    if (mode === "assisted") {
         if (!openaiApiKey) {
-            core.warning('mode=assisted was requested without openai-api-key. TabbyGuard is falling back to deterministic planning.');
+            core.warning("mode=assisted was requested without openai-api-key. TabbyGuard is falling back to deterministic planning.");
         }
         else {
             try {
@@ -231322,7 +231462,7 @@ async function main() {
                     changedFiles,
                     routes,
                     fallbackPlan,
-                    maxChecks
+                    maxChecks,
                 });
                 modelUsed = model;
             }
@@ -231336,12 +231476,17 @@ async function main() {
         previewUrl,
         artifactDir,
         testPlan,
-        browserChannel
+        browserChannel,
     });
     let findings = (0, findings_js_1.summarizeDeterministically)(browserResults);
-    if (mode === 'assisted' && openaiApiKey && findings.length > 0) {
+    if (mode === "assisted" && openaiApiKey && findings.length > 0) {
         try {
-            findings = await (0, openai_js_1.enrichFindings)({ apiKey: openaiApiKey, model, findings, changedFiles });
+            findings = await (0, openai_js_1.enrichFindings)({
+                apiKey: openaiApiKey,
+                model,
+                findings,
+                changedFiles,
+            });
             modelUsed = model;
         }
         catch (error) {
@@ -231357,9 +231502,9 @@ async function main() {
         testPlan,
         findings,
         checkCounts: (0, counts_js_1.countChecks)(browserResults),
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
     };
-    const runSummaryPath = node_path_1.default.join(artifactDir, 'run_summary.json');
+    const runSummaryPath = node_path_1.default.join(artifactDir, "run_summary.json");
     await (0, fs_js_1.writeJson)(runSummaryPath, summary);
     await (0, step_summary_js_1.writeStepSummary)(summary);
     if (postComment) {
@@ -231367,15 +231512,15 @@ async function main() {
     }
     const findingCounts = (0, counts_js_1.countFindings)(findings);
     const failed = (0, severity_js_1.shouldFail)(findings, failOnSeverity);
-    const result = failed ? 'fail' : findings.length > 0 ? 'warn' : 'pass';
-    core.setOutput('result', result);
-    core.setOutput('findings-count', findings.length.toString());
-    core.setOutput('critical-count', findingCounts.critical.toString());
-    core.setOutput('high-count', findingCounts.high.toString());
-    core.setOutput('medium-count', findingCounts.medium.toString());
-    core.setOutput('low-count', findingCounts.low.toString());
-    core.setOutput('run-summary', runSummaryPath);
-    core.setOutput('evidence-path', artifactDir);
+    const result = failed ? "fail" : findings.length > 0 ? "warn" : "pass";
+    core.setOutput("result", result);
+    core.setOutput("findings-count", findings.length.toString());
+    core.setOutput("critical-count", findingCounts.critical.toString());
+    core.setOutput("high-count", findingCounts.high.toString());
+    core.setOutput("medium-count", findingCounts.medium.toString());
+    core.setOutput("low-count", findingCounts.low.toString());
+    core.setOutput("run-summary", runSummaryPath);
+    core.setOutput("evidence-path", artifactDir);
     if (failed) {
         core.setFailed(`TabbyGuard found ${findings.length} evidence-backed finding(s), including at least one at or above fail-on-severity=${failOnSeverity}.`);
     }
@@ -231397,18 +231542,19 @@ exports.countChecks = countChecks;
 exports.countFindings = countFindings;
 function countChecks(results) {
     return {
-        passed: results.filter((item) => item.status === 'passed').length,
-        failed: results.filter((item) => item.status === 'failed').length,
-        skipped: results.filter((item) => item.status === 'skipped').length,
-        inconclusive: results.filter((item) => item.status === 'inconclusive').length
+        passed: results.filter((item) => item.status === "passed").length,
+        failed: results.filter((item) => item.status === "failed").length,
+        skipped: results.filter((item) => item.status === "skipped").length,
+        inconclusive: results.filter((item) => item.status === "inconclusive")
+            .length,
     };
 }
 function countFindings(findings) {
     return {
-        critical: findings.filter((item) => item.severity === 'critical').length,
-        high: findings.filter((item) => item.severity === 'high').length,
-        medium: findings.filter((item) => item.severity === 'medium').length,
-        low: findings.filter((item) => item.severity === 'low').length
+        critical: findings.filter((item) => item.severity === "critical").length,
+        high: findings.filter((item) => item.severity === "high").length,
+        medium: findings.filter((item) => item.severity === "medium").length,
+        low: findings.filter((item) => item.severity === "low").length,
     };
 }
 
@@ -231421,12 +231567,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeDeterministically = summarizeDeterministically;
 const fs_js_1 = __nccwpck_require__(99022);
 function confidence(result, extra = []) {
-    const reasons = [`Browser check reproduced a concrete ${result.item.checkType} signal.`, ...extra];
-    if (result.evidence.some((item) => item.type === 'screenshot') && result.evidence.some((item) => item.type === 'log')) {
-        reasons.push('Screenshot and raw log evidence were captured.');
-        return { level: 'high', reasons };
+    const reasons = [
+        `Browser check reproduced a concrete ${result.item.checkType} signal.`,
+        ...extra,
+    ];
+    if (result.evidence.some((item) => item.type === "screenshot") &&
+        result.evidence.some((item) => item.type === "log")) {
+        reasons.push("Screenshot and raw log evidence were captured.");
+        return { level: "high", reasons };
     }
-    return { level: 'medium', reasons };
+    return { level: "medium", reasons };
 }
 function makeId(result, title) {
     return (0, fs_js_1.slugify)(`${result.item.id}-${title}`);
@@ -231434,151 +231584,190 @@ function makeId(result, title) {
 function evidenceFor(result) {
     return result.evidence.length > 0
         ? result.evidence
-        : [{ type: 'log', localPath: '.tabbyguard/run_summary.json', note: 'Run summary' }];
+        : [
+            {
+                type: "log",
+                localPath: ".tabbyguard/run_summary.json",
+                note: "Run summary",
+            },
+        ];
 }
 function severityForAxe(impact) {
-    return impact === 'critical' ? 'high' : impact === 'serious' ? 'medium' : 'low';
+    return impact === "critical"
+        ? "high"
+        : impact === "serious"
+            ? "medium"
+            : "low";
 }
 function summarizeDeterministically(results) {
     const findings = [];
     for (const result of results) {
-        if (result.status !== 'failed')
+        if (result.status !== "failed")
             continue;
         const findingStart = findings.length;
         const common = {
             sourceCheckId: result.item.id,
             route: result.url,
             changedFiles: result.item.changedFiles,
-            evidence: evidenceFor(result)
+            evidence: evidenceFor(result),
         };
-        if (result.item.checkType === 'runtime') {
+        if (result.item.checkType === "runtime") {
             for (const error of result.pageErrors.slice(0, 3)) {
-                const title = 'Browser runtime exception';
+                const title = "Browser runtime exception";
                 findings.push({
                     ...common,
                     id: makeId(result, `${title}-${error}`),
-                    category: 'runtime',
-                    severity: 'high',
-                    confidence: confidence(result, ['A page exception was emitted by the browser runtime.']),
+                    category: "runtime",
+                    severity: "high",
+                    confidence: confidence(result, [
+                        "A page exception was emitted by the browser runtime.",
+                    ]),
                     title,
                     summary: error,
-                    suggestedCause: 'A changed component, event handler, data assumption, or dependency may be throwing during render or interaction.'
+                    suggestedCause: "A changed component, event handler, data assumption, or dependency may be throwing during render or interaction.",
                 });
             }
-            for (const record of result.consoleMessages.filter((item) => item.type === 'error').slice(0, 3)) {
-                const title = 'Console error on changed surface';
+            for (const record of result.consoleMessages
+                .filter((item) => item.type === "error")
+                .slice(0, 3)) {
+                const title = "Console error on changed surface";
                 findings.push({
                     ...common,
                     id: makeId(result, `${title}-${record.text}`),
-                    category: 'runtime',
-                    severity: 'medium',
-                    confidence: confidence(result, ['The browser emitted a console error while the target route was loaded.']),
+                    category: "runtime",
+                    severity: "medium",
+                    confidence: confidence(result, [
+                        "The browser emitted a console error while the target route was loaded.",
+                    ]),
                     title,
                     summary: record.text,
-                    suggestedCause: 'Inspect the changed files and the referenced browser location for a failed render, missing resource, or client-side exception.'
+                    suggestedCause: "Inspect the changed files and the referenced browser location for a failed render, missing resource, or client-side exception.",
                 });
             }
         }
-        if (result.item.checkType === 'network') {
+        if (result.item.checkType === "network") {
             for (const failure of result.networkFailures.slice(0, 4)) {
-                const title = failure.status ? `First-party request returned ${failure.status}` : 'First-party request failed';
+                const title = failure.status
+                    ? `First-party request returned ${failure.status}`
+                    : "First-party request failed";
                 findings.push({
                     ...common,
                     id: makeId(result, `${title}-${failure.url}`),
-                    category: 'network',
-                    severity: failure.status && failure.status >= 500 ? 'high' : 'medium',
-                    confidence: confidence(result, ['Only same-origin request failures are promoted to findings.']),
+                    category: "network",
+                    severity: failure.status && failure.status >= 500 ? "high" : "medium",
+                    confidence: confidence(result, [
+                        "Only same-origin request failures are promoted to findings.",
+                    ]),
                     title,
-                    summary: `${failure.method} ${failure.url}${failure.failureText ? ` — ${failure.failureText}` : ''}`,
-                    suggestedCause: 'The preview may be calling an unavailable route, server function, asset, or API endpoint.'
+                    summary: `${failure.method} ${failure.url}${failure.failureText ? ` — ${failure.failureText}` : ""}`,
+                    suggestedCause: "The preview may be calling an unavailable route, server function, asset, or API endpoint.",
                 });
             }
         }
-        if (result.item.checkType === 'accessibility') {
-            for (const violation of result.axeViolations.filter((item) => ['critical', 'serious'].includes(item.impact ?? '')).slice(0, 6)) {
+        if (result.item.checkType === "accessibility") {
+            for (const violation of result.axeViolations
+                .filter((item) => ["critical", "serious"].includes(item.impact ?? ""))
+                .slice(0, 6)) {
                 const title = `Accessibility: ${violation.id}`;
                 findings.push({
                     ...common,
                     id: makeId(result, title),
-                    category: 'accessibility',
+                    category: "accessibility",
                     severity: severityForAxe(violation.impact),
-                    confidence: confidence(result, [`Axe reproduced the ${violation.id} rule on ${violation.nodes} node(s).`]),
+                    confidence: confidence(result, [
+                        `Axe reproduced the ${violation.id} rule on ${violation.nodes} node(s).`,
+                    ]),
                     title,
-                    summary: `${violation.help ?? violation.description ?? 'Axe accessibility violation'} (${violation.nodes} affected node${violation.nodes === 1 ? '' : 's'}).`,
-                    suggestedCause: 'Inspect the affected DOM nodes and the changed component for missing semantics, labels, contrast, or keyboard accessibility.'
+                    summary: `${violation.help ?? violation.description ?? "Axe accessibility violation"} (${violation.nodes} affected node${violation.nodes === 1 ? "" : "s"}).`,
+                    suggestedCause: "Inspect the affected DOM nodes and the changed component for missing semantics, labels, contrast, or keyboard accessibility.",
                 });
             }
         }
-        if (result.item.checkType === 'layout' && result.layout?.hasHorizontalOverflow) {
+        if (result.item.checkType === "layout" &&
+            result.layout?.hasHorizontalOverflow) {
             const offender = result.layout.offenders[0];
             const title = `Horizontal overflow at ${result.item.viewport} viewport`;
             findings.push({
                 ...common,
                 id: makeId(result, title),
-                category: 'layout',
-                severity: 'medium',
+                category: "layout",
+                severity: "medium",
                 confidence: confidence(result, [
-                    `Document width was ${result.layout.documentWidth}px in a ${result.layout.viewportWidth}px viewport.`
+                    `Document width was ${result.layout.documentWidth}px in a ${result.layout.viewportWidth}px viewport.`,
                 ]),
                 title,
                 summary: offender
                     ? `${offender.selector} extends to ${offender.right}px in a ${result.layout.viewportWidth}px viewport.`
                     : `Document width ${result.layout.documentWidth}px exceeds viewport width ${result.layout.viewportWidth}px.`,
-                suggestedCause: 'A fixed/minimum width, long unwrapped content, transform, absolute positioning, or grid/flex rule may be pushing content outside the viewport.'
+                suggestedCause: "A fixed/minimum width, long unwrapped content, transform, absolute positioning, or grid/flex rule may be pushing content outside the viewport.",
             });
         }
-        if (result.item.checkType === 'interaction' && result.interaction?.status === 'failed') {
+        if (result.item.checkType === "interaction" &&
+            result.interaction?.status === "failed") {
             const title = `Interaction failed: ${result.interaction.kind}`;
             findings.push({
                 ...common,
                 id: makeId(result, title),
-                category: 'interaction',
-                severity: 'high',
-                confidence: confidence(result, ['A real visible control was identified before the failed behavior was evaluated.']),
+                category: "interaction",
+                severity: "high",
+                confidence: confidence(result, [
+                    "A real visible control was identified before the failed behavior was evaluated.",
+                ]),
                 title,
-                summary: result.interaction.failures.join(' ') || result.interaction.reason,
-                suggestedCause: 'The changed component may have broken event handling, dialog state, focus behavior, or keyboard dismissal.'
+                summary: result.interaction.failures.join(" ") || result.interaction.reason,
+                suggestedCause: "The changed component may have broken event handling, dialog state, focus behavior, or keyboard dismissal.",
             });
         }
-        if (result.item.checkType === 'keyboard' && result.keyboard?.status === 'failed') {
-            const title = 'Keyboard focus did not advance';
+        if (result.item.checkType === "keyboard" &&
+            result.keyboard?.status === "failed") {
+            const title = "Keyboard focus did not advance";
             findings.push({
                 ...common,
                 id: makeId(result, title),
-                category: 'keyboard',
-                severity: 'medium',
-                confidence: confidence(result, [`Observed focus sequence: ${result.keyboard.focusSequence.join(' → ')}`]),
+                category: "keyboard",
+                severity: "medium",
+                confidence: confidence(result, [
+                    `Observed focus sequence: ${result.keyboard.focusSequence.join(" → ")}`,
+                ]),
                 title,
                 summary: result.keyboard.reason,
-                suggestedCause: 'Focusable controls may have invalid tab order, hidden overlays, disabled focus styles, or focus interception.'
+                suggestedCause: "Focusable controls may have invalid tab order, hidden overlays, disabled focus styles, or focus interception.",
             });
         }
         // A failed browser check should never disappear just because a specialized
         // observation could not be produced. This mainly covers navigation/check
         // execution failures (for example, an unreachable preview URL).
         if (findings.length === findingStart) {
-            const detail = result.pageErrors[0] ?? result.interaction?.reason ?? result.keyboard?.reason ?? result.notes[0] ?? 'The browser check could not complete.';
-            const title = 'Browser check could not complete';
+            const detail = result.pageErrors[0] ??
+                result.interaction?.reason ??
+                result.keyboard?.reason ??
+                result.notes[0] ??
+                "The browser check could not complete.";
+            const title = "Browser check could not complete";
             findings.push({
                 ...common,
                 id: makeId(result, `${title}-${detail}`),
-                category: 'runtime',
-                severity: 'high',
-                confidence: confidence(result, ['The targeted browser check returned failed without a specialized finding type.']),
+                category: "runtime",
+                severity: "high",
+                confidence: confidence(result, [
+                    "The targeted browser check returned failed without a specialized finding type.",
+                ]),
                 title,
                 summary: detail,
-                suggestedCause: 'Confirm the preview URL is reachable and inspect the captured trace/log for a navigation, browser, or interaction execution failure.'
+                suggestedCause: "Confirm the preview URL is reachable and inspect the captured trace/log for a navigation, browser, or interaction execution failure.",
             });
         }
     }
     const seen = new Set();
-    return findings.filter((finding) => {
+    return findings
+        .filter((finding) => {
         const key = `${finding.category}:${finding.title}:${finding.route}`;
         if (seen.has(key))
             return false;
         seen.add(key);
         return true;
-    }).slice(0, 30);
+    })
+        .slice(0, 30);
 }
 
 /***/ }),
@@ -231590,56 +231779,64 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderPrComment = renderPrComment;
 const severity_js_1 = __nccwpck_require__(99024);
 function escapeTable(value) {
-    return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+    return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 function workflowUrl(summary) {
     const { serverUrl, owner, repo, runId } = summary.context;
-    return serverUrl && runId ? `${serverUrl}/${owner}/${repo}/actions/runs/${runId}` : undefined;
+    return serverUrl && runId
+        ? `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`
+        : undefined;
 }
 function counts(summary) {
     return {
-        critical: summary.findings.filter((item) => item.severity === 'critical').length,
-        high: summary.findings.filter((item) => item.severity === 'high').length,
-        medium: summary.findings.filter((item) => item.severity === 'medium').length,
-        low: summary.findings.filter((item) => item.severity === 'low').length
+        critical: summary.findings.filter((item) => item.severity === "critical").length,
+        high: summary.findings.filter((item) => item.severity === "high")
+            .length,
+        medium: summary.findings.filter((item) => item.severity === "medium").length,
+        low: summary.findings.filter((item) => item.severity === "low")
+            .length,
     };
 }
-function renderPrComment(summary, marker = '<!-- tabbyguard-review -->') {
+function renderPrComment(summary, marker = "<!-- tabbyguard-review -->") {
     const severity = counts(summary);
     const runUrl = workflowUrl(summary);
     const lines = [
         marker,
-        '# 🛡️ TabbyGuard',
-        '**Evidence-driven frontend QA**',
-        '',
+        "# 🛡️ TabbyGuard",
+        "**Evidence-driven frontend QA**",
+        "",
         summary.findings.length === 0
-            ? '### ✅ No evidence-backed regressions found'
-            : `### ⚠️ ${summary.findings.length} evidence-backed finding${summary.findings.length === 1 ? '' : 's'}`,
-        '',
+            ? "### ✅ No evidence-backed regressions found"
+            : `### ⚠️ ${summary.findings.length} evidence-backed finding${summary.findings.length === 1 ? "" : "s"}`,
+        "",
         `**${severity.critical} critical · ${severity.high} high · ${severity.medium} medium · ${severity.low} low**`,
-        '',
+        "",
         `Preview: ${summary.context.previewUrl}  `,
         `Commit: \`${summary.context.commitSha.slice(0, 12)}\` · Mode: \`${summary.mode}\` · Duration: ${(summary.durationMs / 1000).toFixed(1)}s  `,
-        runUrl ? `Evidence: [open workflow run](${runUrl})` : 'Evidence: available in the workflow run',
-        '',
+        runUrl
+            ? `Evidence: [open workflow run](${runUrl})`
+            : "Evidence: available in the workflow run",
+        "",
         `**Checks:** ${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive`,
-        ''
+        "",
     ];
     if (summary.findings.length > 0) {
-        lines.push('## Findings', '', '| Severity | Area | Finding | Confidence |', '|---|---|---|---|');
+        lines.push("## Findings", "", "| Severity | Area | Finding | Confidence |", "|---|---|---|---|");
         for (const finding of summary.findings) {
             lines.push(`| ${(0, severity_js_1.severityIcon)(finding.severity)} ${finding.severity} | ${finding.category} | ${escapeTable(finding.title)} | ${finding.confidence.level} |`);
         }
         for (const finding of summary.findings) {
-            lines.push('', '<details>', `<summary>${(0, severity_js_1.severityIcon)(finding.severity)} <strong>${finding.severity.toUpperCase()}</strong> — ${finding.title}</summary>`, '', `**Route:** ${finding.route}`, '', finding.summary, '', `**Likely cause:** ${finding.suggestedCause}`, '', `**Confidence: ${finding.confidence.level}**`, ...finding.confidence.reasons.map((reason) => `- ${reason}`), '', finding.changedFiles.length ? `**Changed files:** ${finding.changedFiles.map((file) => `\`${file}\``).join(', ')}` : '**Changed files:** no direct file correlation', '', '**Evidence:**', ...finding.evidence.map((item) => `- ${item.type}: \`${item.localPath}\`${item.note ? ` — ${item.note}` : ''}`), '', '</details>');
+            lines.push("", "<details>", `<summary>${(0, severity_js_1.severityIcon)(finding.severity)} <strong>${finding.severity.toUpperCase()}</strong> — ${finding.title}</summary>`, "", `**Route:** ${finding.route}`, "", finding.summary, "", `**Likely cause:** ${finding.suggestedCause}`, "", `**Confidence: ${finding.confidence.level}**`, ...finding.confidence.reasons.map((reason) => `- ${reason}`), "", finding.changedFiles.length
+                ? `**Changed files:** ${finding.changedFiles.map((file) => `\`${file}\``).join(", ")}`
+                : "**Changed files:** no direct file correlation", "", "**Evidence:**", ...finding.evidence.map((item) => `- ${item.type}: \`${item.localPath}\`${item.note ? ` — ${item.note}` : ""}`), "", "</details>");
         }
     }
-    lines.push('', '## Targeted check plan', '', '| Surface | Route | Viewport | Check | Why |', '|---|---|---|---|---|');
+    lines.push("", "## Targeted check plan", "", "| Surface | Route | Viewport | Check | Why |", "|---|---|---|---|---|");
     for (const item of summary.testPlan) {
-        lines.push(`| ${escapeTable(item.targetSurface)} | ${escapeTable(item.route ?? '/')} | ${item.viewport} | ${item.checkType} | ${escapeTable(item.reason)} |`);
+        lines.push(`| ${escapeTable(item.targetSurface)} | ${escapeTable(item.route ?? "/")} | ${item.viewport} | ${item.checkType} | ${escapeTable(item.reason)} |`);
     }
-    lines.push('', '---', '_No evidence, no finding. Skipped or inconclusive probes never become defects on their own. Automated accessibility checks complement, but do not replace, manual accessibility review._');
-    return `${lines.join('\n')}\n`;
+    lines.push("", "---", "_No evidence, no finding. Skipped or inconclusive probes never become defects on their own. Automated accessibility checks complement, but do not replace, manual accessibility review._");
+    return `${lines.join("\n")}\n`;
 }
 
 /***/ }),
@@ -231686,19 +231883,21 @@ const core = __importStar(__nccwpck_require__(7484));
 async function writeStepSummary(summary) {
     const rows = summary.findings
         .slice(0, 10)
-        .map((item) => `| ${item.severity.toUpperCase()} | ${item.category} | ${item.title.replace(/\|/g, '\\|')} |`)
-        .join('\n');
+        .map((item) => `| ${item.severity.toUpperCase()} | ${item.category} | ${item.title.replace(/\|/g, "\\|")} |`)
+        .join("\n");
     const markdown = [
-        '# 🛡️ TabbyGuard',
-        '',
+        "# 🛡️ TabbyGuard",
+        "",
         `**${summary.findings.length} findings · ${summary.checkCounts.passed} passed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive**`,
-        '',
-        summary.findings.length ? '| Severity | Area | Finding |\n|---|---|---|\n' + rows : '✅ No evidence-backed regressions found.',
-        '',
+        "",
+        summary.findings.length
+            ? "| Severity | Area | Finding |\n|---|---|---|\n" + rows
+            : "✅ No evidence-backed regressions found.",
+        "",
         `Preview: ${summary.context.previewUrl}`,
-        '',
-        '_No evidence, no finding._'
-    ].join('\n');
+        "",
+        "_No evidence, no finding._",
+    ].join("\n");
     await core.summary.addRaw(markdown).write();
 }
 
@@ -231715,19 +231914,23 @@ const FRONTEND_EXT = /\.(tsx|jsx|ts|js|vue|svelte|css|scss|sass|html|mdx)$/i;
 function fileMatches(rule, file) {
     if (rule.patterns.some((pattern) => pattern.test(file.filename)))
         return true;
-    return Boolean(file.patch && rule.patchPatterns?.some((pattern) => pattern.test(file.patch ?? '')));
+    return Boolean(file.patch &&
+        rule.patchPatterns?.some((pattern) => pattern.test(file.patch ?? "")));
 }
 function pickRoute(rule, routes, matched) {
     if (routes.length === 1)
         return routes[0];
-    const haystack = matched.map((file) => file.filename).join(' ').toLowerCase();
+    const haystack = matched
+        .map((file) => file.filename)
+        .join(" ")
+        .toLowerCase();
     const hinted = routes.find((route) => {
-        const normalized = route.toLowerCase().replace(/^\//, '');
+        const normalized = route.toLowerCase().replace(/^\//, "");
         if (normalized && haystack.includes(normalized))
             return true;
         return rule.routeHints?.some((hint) => normalized.includes(hint) || haystack.includes(hint));
     });
-    return hinted ?? routes[0] ?? '/';
+    return hinted ?? routes[0] ?? "/";
 }
 function dedupe(plan) {
     const seen = new Set();
@@ -231758,46 +231961,47 @@ function createDeterministicPlan(changedFiles, routes, maxChecks = 16) {
                     checkType,
                     reason: rule.reason,
                     changedFiles: matched.map((file) => file.filename),
-                    selectors: rule.selectors ?? []
+                    selectors: rule.selectors ?? [],
                 });
             }
         }
     }
     if (plan.length === 0) {
-        const route = routes[0] ?? '/';
+        const route = routes[0] ?? "/";
         const names = frontendFiles.map((file) => file.filename);
-        return [
+        const fallbackPlan = [
             {
-                id: 'fallback-mobile-layout',
-                targetSurface: 'Changed frontend surface',
+                id: "fallback-mobile-layout",
+                targetSurface: "Changed frontend surface",
                 route,
-                viewport: 'mobile',
-                checkType: 'layout',
-                reason: 'No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.',
+                viewport: "mobile",
+                checkType: "layout",
+                reason: "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
                 changedFiles: names,
-                selectors: []
+                selectors: [],
             },
             {
-                id: 'fallback-desktop-runtime',
-                targetSurface: 'Changed frontend surface',
+                id: "fallback-desktop-runtime",
+                targetSurface: "Changed frontend surface",
                 route,
-                viewport: 'desktop',
-                checkType: 'runtime',
-                reason: 'No specific risk rule matched, so TabbyGuard is running a runtime smoke check.',
+                viewport: "desktop",
+                checkType: "runtime",
+                reason: "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
                 changedFiles: names,
-                selectors: []
+                selectors: [],
             },
             {
-                id: 'fallback-desktop-a11y',
-                targetSurface: 'Changed frontend surface',
+                id: "fallback-desktop-a11y",
+                targetSurface: "Changed frontend surface",
                 route,
-                viewport: 'desktop',
-                checkType: 'accessibility',
-                reason: 'No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.',
+                viewport: "desktop",
+                checkType: "accessibility",
+                reason: "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
                 changedFiles: names,
-                selectors: []
-            }
-        ].slice(0, maxChecks);
+                selectors: [],
+            },
+        ];
+        return fallbackPlan.slice(0, maxChecks);
     }
     return dedupe(plan).slice(0, maxChecks);
 }
@@ -231811,63 +232015,121 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.riskRules = void 0;
 exports.riskRules = [
     {
-        name: 'navigation',
+        name: "navigation",
         patterns: [/nav/i, /navbar/i, /header/i, /menu/i, /drawer/i, /sidebar/i],
         patchPatterns: [/aria-expanded/i, /navigation/i, /menu/i],
-        surface: 'Navigation',
-        viewports: ['mobile', 'desktop'],
-        checks: ['interaction', 'keyboard', 'layout', 'accessibility', 'runtime'],
-        reason: 'Navigation changes can affect responsive layout, focus, keyboard behavior, and accessible controls.',
-        selectors: ['button[aria-expanded]', 'button[aria-label*="menu" i]', 'button[title*="menu" i]', '[role="button"][aria-expanded]']
+        surface: "Navigation",
+        viewports: ["mobile", "desktop"],
+        checks: ["interaction", "keyboard", "layout", "accessibility", "runtime"],
+        reason: "Navigation changes can affect responsive layout, focus, keyboard behavior, and accessible controls.",
+        selectors: [
+            "button[aria-expanded]",
+            'button[aria-label*="menu" i]',
+            'button[title*="menu" i]',
+            '[role="button"][aria-expanded]',
+        ],
     },
     {
-        name: 'forms',
-        patterns: [/form/i, /input/i, /select/i, /textarea/i, /checkout/i, /signup/i, /login/i, /auth/i],
+        name: "forms",
+        patterns: [
+            /form/i,
+            /input/i,
+            /select/i,
+            /textarea/i,
+            /checkout/i,
+            /signup/i,
+            /login/i,
+            /auth/i,
+        ],
         patchPatterns: [/<form/i, /type=["']submit/i, /onSubmit/i, /aria-invalid/i],
-        surface: 'Form flow',
-        viewports: ['mobile', 'desktop'],
-        checks: ['interaction', 'keyboard', 'accessibility', 'runtime'],
-        reason: 'Form changes can break labels, focus order, validation, and runtime behavior.',
-        selectors: ['input:not([type="hidden"]):not([disabled])', 'textarea:not([disabled])', 'select:not([disabled])', 'button[type="submit"]:not([disabled])'],
-        routeHints: ['checkout', 'signup', 'login', 'auth']
+        surface: "Form flow",
+        viewports: ["mobile", "desktop"],
+        checks: ["interaction", "keyboard", "accessibility", "runtime"],
+        reason: "Form changes can break labels, focus order, validation, and runtime behavior.",
+        selectors: [
+            'input:not([type="hidden"]):not([disabled])',
+            "textarea:not([disabled])",
+            "select:not([disabled])",
+            'button[type="submit"]:not([disabled])',
+        ],
+        routeHints: ["checkout", "signup", "login", "auth"],
     },
     {
-        name: 'dialogs',
-        patterns: [/modal/i, /dialog/i, /popover/i, /tooltip/i, /toast/i, /overlay/i],
+        name: "dialogs",
+        patterns: [
+            /modal/i,
+            /dialog/i,
+            /popover/i,
+            /tooltip/i,
+            /toast/i,
+            /overlay/i,
+        ],
         patchPatterns: [/role=["']dialog/i, /aria-modal/i, /Escape/i],
-        surface: 'Dialog or overlay',
-        viewports: ['mobile', 'desktop'],
-        checks: ['interaction', 'keyboard', 'accessibility', 'layout'],
-        reason: 'Overlay changes can regress visibility, Escape behavior, focus, layering, and accessible names.',
-        selectors: ['[role="dialog"]', 'dialog', '[aria-modal="true"]']
+        surface: "Dialog or overlay",
+        viewports: ["mobile", "desktop"],
+        checks: ["interaction", "keyboard", "accessibility", "layout"],
+        reason: "Overlay changes can regress visibility, Escape behavior, focus, layering, and accessible names.",
+        selectors: ['[role="dialog"]', "dialog", '[aria-modal="true"]'],
     },
     {
-        name: 'theme',
-        patterns: [/dark/i, /theme/i, /color/i, /tokens/i, /tailwind/i, /\.css$/i, /\.scss$/i, /\.sass$/i],
+        name: "theme",
+        patterns: [
+            /dark/i,
+            /theme/i,
+            /color/i,
+            /tokens/i,
+            /tailwind/i,
+            /\.css$/i,
+            /\.scss$/i,
+            /\.sass$/i,
+        ],
         patchPatterns: [/color:/i, /background/i, /@media/i, /grid/i, /flex/i],
-        surface: 'Theme and visual system',
-        viewports: ['mobile', 'desktop'],
-        checks: ['accessibility', 'layout'],
-        reason: 'Theme and CSS changes can introduce contrast, clipping, and responsive regressions.'
+        surface: "Theme and visual system",
+        viewports: ["mobile", "desktop"],
+        checks: ["accessibility", "layout"],
+        reason: "Theme and CSS changes can introduce contrast, clipping, and responsive regressions.",
     },
     {
-        name: 'layout',
-        patterns: [/layout/i, /grid/i, /container/i, /section/i, /card/i, /hero/i, /page/i],
-        patchPatterns: [/width:/i, /min-width/i, /max-width/i, /position:/i, /overflow/i],
-        surface: 'Page layout',
-        viewports: ['mobile', 'desktop'],
-        checks: ['layout', 'runtime'],
-        reason: 'Layout changes can cause clipping, overflow, or runtime problems across viewports.'
+        name: "layout",
+        patterns: [
+            /layout/i,
+            /grid/i,
+            /container/i,
+            /section/i,
+            /card/i,
+            /hero/i,
+            /page/i,
+        ],
+        patchPatterns: [
+            /width:/i,
+            /min-width/i,
+            /max-width/i,
+            /position:/i,
+            /overflow/i,
+        ],
+        surface: "Page layout",
+        viewports: ["mobile", "desktop"],
+        checks: ["layout", "runtime"],
+        reason: "Layout changes can cause clipping, overflow, or runtime problems across viewports.",
     },
     {
-        name: 'data-state',
-        patterns: [/loading/i, /skeleton/i, /spinner/i, /state/i, /store/i, /query/i, /api/i, /fetch/i],
+        name: "data-state",
+        patterns: [
+            /loading/i,
+            /skeleton/i,
+            /spinner/i,
+            /state/i,
+            /store/i,
+            /query/i,
+            /api/i,
+            /fetch/i,
+        ],
         patchPatterns: [/fetch\(/i, /axios/i, /useQuery/i, /throw new Error/i],
-        surface: 'Data and loading state',
-        viewports: ['desktop'],
-        checks: ['runtime', 'network'],
-        reason: 'Data-flow changes can produce runtime exceptions, failed requests, and broken loading states.'
-    }
+        surface: "Data and loading state",
+        viewports: ["desktop"],
+        checks: ["runtime", "network"],
+        reason: "Data-flow changes can produce runtime exceptions, failed requests, and broken loading states.",
+    },
 ];
 
 /***/ }),
@@ -231885,7 +232147,7 @@ exports.ChangedFileSchema = zod_1.z.object({
     additions: zod_1.z.number().int().nonnegative(),
     deletions: zod_1.z.number().int().nonnegative(),
     changes: zod_1.z.number().int().nonnegative(),
-    patch: zod_1.z.string().optional()
+    patch: zod_1.z.string().optional(),
 });
 function boundedChanges(files, maxPerFile = 4_000, maxTotal = 16_000) {
     let remaining = maxTotal;
@@ -231906,23 +232168,23 @@ function boundedChanges(files, maxPerFile = 4_000, maxTotal = 16_000) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FindingSchema = exports.ConfidenceSchema = exports.EvidenceSchema = exports.FindingCategorySchema = exports.SeveritySchema = void 0;
 const zod_1 = __nccwpck_require__(924);
-exports.SeveritySchema = zod_1.z.enum(['critical', 'high', 'medium', 'low']);
+exports.SeveritySchema = zod_1.z.enum(["critical", "high", "medium", "low"]);
 exports.FindingCategorySchema = zod_1.z.enum([
-    'runtime',
-    'network',
-    'accessibility',
-    'layout',
-    'interaction',
-    'keyboard'
+    "runtime",
+    "network",
+    "accessibility",
+    "layout",
+    "interaction",
+    "keyboard",
 ]);
 exports.EvidenceSchema = zod_1.z.object({
-    type: zod_1.z.enum(['screenshot', 'trace', 'log', 'json']),
+    type: zod_1.z.enum(["screenshot", "trace", "log", "json"]),
     localPath: zod_1.z.string().min(1),
-    note: zod_1.z.string().optional()
+    note: zod_1.z.string().optional(),
 });
 exports.ConfidenceSchema = zod_1.z.object({
-    level: zod_1.z.enum(['high', 'medium', 'low']),
-    reasons: zod_1.z.array(zod_1.z.string()).min(1)
+    level: zod_1.z.enum(["high", "medium", "low"]),
+    reasons: zod_1.z.array(zod_1.z.string()).min(1),
 });
 exports.FindingSchema = zod_1.z.object({
     id: zod_1.z.string().min(1),
@@ -231935,7 +232197,7 @@ exports.FindingSchema = zod_1.z.object({
     suggestedCause: zod_1.z.string().min(1),
     route: zod_1.z.string().min(1),
     changedFiles: zod_1.z.array(zod_1.z.string()),
-    evidence: zod_1.z.array(exports.EvidenceSchema).min(1)
+    evidence: zod_1.z.array(exports.EvidenceSchema).min(1),
 });
 
 /***/ }),
@@ -231958,12 +232220,17 @@ exports.PRContextSchema = zod_1.z.object({
     previewUrl: zod_1.z.string(),
     runId: zod_1.z.number().optional(),
     runAttempt: zod_1.z.number().optional(),
-    serverUrl: zod_1.z.string().optional()
+    serverUrl: zod_1.z.string().optional(),
 });
-exports.CheckStatusSchema = zod_1.z.enum(['passed', 'failed', 'skipped', 'inconclusive']);
+exports.CheckStatusSchema = zod_1.z.enum([
+    "passed",
+    "failed",
+    "skipped",
+    "inconclusive",
+]);
 exports.RunSummarySchema = zod_1.z.object({
     context: exports.PRContextSchema,
-    mode: zod_1.z.enum(['deterministic', 'assisted']),
+    mode: zod_1.z.enum(["deterministic", "assisted"]),
     modelUsed: zod_1.z.string(),
     durationMs: zod_1.z.number(),
     changedFiles: zod_1.z.array(change_js_1.ChangedFileSchema),
@@ -231973,9 +232240,9 @@ exports.RunSummarySchema = zod_1.z.object({
         passed: zod_1.z.number(),
         failed: zod_1.z.number(),
         skipped: zod_1.z.number(),
-        inconclusive: zod_1.z.number()
+        inconclusive: zod_1.z.number(),
     }),
-    generatedAt: zod_1.z.string()
+    generatedAt: zod_1.z.string(),
 });
 
 /***/ }),
@@ -231987,14 +232254,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TestPlanSchema = exports.TestPlanItemSchema = exports.CheckTypeSchema = exports.ViewportNameSchema = void 0;
 exports.viewportSize = viewportSize;
 const zod_1 = __nccwpck_require__(924);
-exports.ViewportNameSchema = zod_1.z.enum(['mobile', 'tablet', 'desktop']);
+exports.ViewportNameSchema = zod_1.z.enum(["mobile", "tablet", "desktop"]);
 exports.CheckTypeSchema = zod_1.z.enum([
-    'runtime',
-    'network',
-    'accessibility',
-    'layout',
-    'interaction',
-    'keyboard'
+    "runtime",
+    "network",
+    "accessibility",
+    "layout",
+    "interaction",
+    "keyboard",
 ]);
 exports.TestPlanItemSchema = zod_1.z.object({
     id: zod_1.z.string().min(1),
@@ -232004,15 +232271,15 @@ exports.TestPlanItemSchema = zod_1.z.object({
     checkType: exports.CheckTypeSchema,
     reason: zod_1.z.string().min(1),
     changedFiles: zod_1.z.array(zod_1.z.string()),
-    selectors: zod_1.z.array(zod_1.z.string())
+    selectors: zod_1.z.array(zod_1.z.string()),
 });
 exports.TestPlanSchema = zod_1.z.object({
-    testPlan: zod_1.z.array(exports.TestPlanItemSchema).min(1).max(24)
+    testPlan: zod_1.z.array(exports.TestPlanItemSchema).min(1).max(24),
 });
 function viewportSize(viewport) {
-    if (viewport === 'mobile')
+    if (viewport === "mobile")
         return { width: 390, height: 844 };
-    if (viewport === 'tablet')
+    if (viewport === "tablet")
         return { width: 768, height: 1024 };
     return { width: 1440, height: 900 };
 }
@@ -232035,8 +232302,8 @@ const node_path_1 = __importDefault(require("node:path"));
 function slugify(value) {
     return value
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '')
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "")
         .slice(0, 90);
 }
 async function ensureDir(dir) {
@@ -232044,7 +232311,7 @@ async function ensureDir(dir) {
 }
 async function writeJson(filePath, value) {
     await ensureDir(node_path_1.default.dirname(filePath));
-    await promises_1.default.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+    await promises_1.default.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 async function listFilesRecursive(dir) {
     const files = [];
@@ -232107,8 +232374,10 @@ exports.readMaxChecks = readMaxChecks;
 const core = __importStar(__nccwpck_require__(7484));
 function readInput(name, required = false) {
     const fromCore = core.getInput(name);
-    const normalized = name.replace(/[^A-Za-z0-9]/g, '_').toUpperCase();
-    const fromEnv = process.env[`INPUT_${normalized}`] || process.env[`TABBYGUARD_${normalized}`] || '';
+    const normalized = name.replace(/[^A-Za-z0-9]/g, "_").toUpperCase();
+    const fromEnv = process.env[`INPUT_${normalized}`] ||
+        process.env[`TABBYGUARD_${normalized}`] ||
+        "";
     const value = (fromCore || fromEnv).trim();
     if (required && !value)
         throw new Error(`Input required and not supplied: ${name}`);
@@ -232118,34 +232387,39 @@ function readBoolean(name, fallback) {
     const value = readInput(name);
     if (!value)
         return fallback;
-    if (['true', '1', 'yes'].includes(value.toLowerCase()))
+    if (["true", "1", "yes"].includes(value.toLowerCase()))
         return true;
-    if (['false', '0', 'no'].includes(value.toLowerCase()))
+    if (["false", "0", "no"].includes(value.toLowerCase()))
         return false;
     throw new Error(`${name} must be true or false`);
 }
 function readMode() {
-    const value = readInput('mode') || 'deterministic';
-    if (value !== 'deterministic' && value !== 'assisted') {
-        throw new Error('mode must be deterministic or assisted');
+    const value = readInput("mode") || "deterministic";
+    if (value !== "deterministic" && value !== "assisted") {
+        throw new Error("mode must be deterministic or assisted");
     }
     return value;
 }
 function readFailOnSeverity() {
-    const value = readInput('fail-on-severity') || 'high';
-    if (!['none', 'critical', 'high', 'medium', 'low'].includes(value)) {
-        throw new Error('fail-on-severity must be none, critical, high, medium, or low');
+    const value = readInput("fail-on-severity") || "high";
+    if (!["none", "critical", "high", "medium", "low"].includes(value)) {
+        throw new Error("fail-on-severity must be none, critical, high, medium, or low");
     }
     return value;
 }
 function readRoutes() {
-    const raw = readInput('routes') || '/';
-    return [...new Set(raw.split(',').map((route) => route.trim()).filter(Boolean))];
+    const raw = readInput("routes") || "/";
+    return [
+        ...new Set(raw
+            .split(",")
+            .map((route) => route.trim())
+            .filter(Boolean)),
+    ];
 }
 function readMaxChecks() {
-    const raw = Number(readInput('max-checks') || '16');
+    const raw = Number(readInput("max-checks") || "16");
     if (!Number.isInteger(raw) || raw < 1 || raw > 24)
-        throw new Error('max-checks must be an integer from 1 to 24');
+        throw new Error("max-checks must be an integer from 1 to 24");
     return raw;
 }
 
@@ -232161,21 +232435,21 @@ const rank = {
     critical: 4,
     high: 3,
     medium: 2,
-    low: 1
+    low: 1,
 };
 function shouldFail(findings, threshold) {
-    if (threshold === 'none')
+    if (threshold === "none")
         return false;
     return findings.some((finding) => rank[finding.severity] >= rank[threshold]);
 }
 function severityIcon(severity) {
-    if (severity === 'critical')
-        return '🔴';
-    if (severity === 'high')
-        return '🟠';
-    if (severity === 'medium')
-        return '🟡';
-    return '🔵';
+    if (severity === "critical")
+        return "🔴";
+    if (severity === "high")
+        return "🟠";
+    if (severity === "medium")
+        return "🟡";
+    return "🔵";
 }
 
 /***/ })

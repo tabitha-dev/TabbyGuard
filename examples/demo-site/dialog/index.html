@@ -1,1 +1,46 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dialog fixture</title><style>[role=dialog]{position:fixed;inset:20%;background:white;border:2px solid #333;padding:2rem}</style></head><body><main><h1>Broken dialog fixture</h1><button id="open" type="button">Open details</button><div id="dialog" role="dialog" aria-modal="true" aria-labelledby="title" hidden><h2 id="title">Details</h2><button type="button">Close</button></div></main><script>document.querySelector('#open').addEventListener('click',()=>document.querySelector('#dialog').hidden=false);document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault()}})</script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dialog fixture</title>
+    <style>
+      [role="dialog"] {
+        position: fixed;
+        inset: 20%;
+        background: white;
+        border: 2px solid #333;
+        padding: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Broken dialog fixture</h1>
+      <button id="open" type="button">Open details</button>
+      <div
+        id="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="title"
+        hidden
+      >
+        <h2 id="title">Details</h2>
+        <button type="button">Close</button>
+      </div>
+    </main>
+    <script>
+      document
+        .querySelector("#open")
+        .addEventListener(
+          "click",
+          () => (document.querySelector("#dialog").hidden = false),
+        );
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+        }
+      });
+    </script>
+  </body>
+</html>

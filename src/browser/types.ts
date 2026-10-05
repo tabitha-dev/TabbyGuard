@@ -1,19 +1,36 @@
-import type { Evidence } from '../schemas/finding.js';
-import type { CheckStatus } from '../schemas/run-summary.js';
-import type { TestPlanItem } from '../schemas/test-plan.js';
+import type { Evidence } from "../schemas/finding.js";
+import type { CheckStatus } from "../schemas/run-summary.js";
+import type { TestPlanItem } from "../schemas/test-plan.js";
 
 export type ConsoleRecord = { type: string; text: string; location?: string };
-export type NetworkFailure = { url: string; method: string; failureText?: string; status?: number };
-export type AxeViolation = { id: string; impact?: string | null; description?: string; help?: string; nodes: number };
+export type NetworkFailure = {
+  url: string;
+  method: string;
+  failureText?: string;
+  status?: number;
+};
+export type AxeViolation = {
+  id: string;
+  impact?: string | null;
+  description?: string;
+  help?: string;
+  nodes: number;
+};
 export type LayoutObservation = {
   hasHorizontalOverflow: boolean;
   documentWidth: number;
   viewportWidth: number;
-  offenders: { selector: string; width: number; left: number; right: number; text?: string }[];
+  offenders: {
+    selector: string;
+    width: number;
+    left: number;
+    right: number;
+    text?: string;
+  }[];
 };
 export type InteractionObservation = {
   status: CheckStatus;
-  kind: 'navigation' | 'dialog' | 'form' | 'generic';
+  kind: "navigation" | "dialog" | "form" | "generic";
   attempted: string[];
   failures: string[];
   reason: string;
