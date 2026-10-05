@@ -39,7 +39,8 @@
     "test:integration": "vitest run tests/integration",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm run check && npm test && npm run build"
+    "verify": "npm run format:check && npm run check && npm test && npm run build && npm run test:bundle",
+    "test:bundle": "node scripts/smoke-bundle.mjs"
   },
   "dependencies": {
     "@actions/core": "1.11.1",
