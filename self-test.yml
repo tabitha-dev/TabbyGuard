@@ -1,0 +1,71 @@
+name: TabbyGuard Self Test
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  self-test:
+    name: Detect known frontend regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start demo site
+        shell: bash
+        run: |
+          node examples/demo-site/server.mjs 4173 > /tmp/tabbyguard-demo.log 2>&1 &
+          echo $! > /tmp/tabbyguard-demo.pid
+          curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:4173/clean > /dev/null
+
+      - name: Run TabbyGuard against overflow fixture
+        id: tabbyguard
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          preview-url: http://127.0.0.1:4173
+          routes: /overflow
+          fail-on-severity: none
+          post-comment: "false"
+          upload-artifacts: "true"
+
+      - name: Assert TabbyGuard found the known defect
+        shell: bash
+        run: |
+          COUNT="${{ steps.tabbyguard.outputs.findings-count }}"
+          RESULT="${{ steps.tabbyguard.outputs.result }}"
+
+          echo "findings-count=$COUNT"
+          echo "result=$RESULT"
+
+          if [ -z "$COUNT" ] || [ "$COUNT" -lt 1 ]; then
+            echo "::error::TabbyGuard did not detect the intentionally broken overflow fixture."
+            exit 1
+          fi
+
+          if [ "$RESULT" = "pass" ]; then
+            echo "::error::TabbyGuard reported pass even though the overflow fixture contains a known defect."
+            exit 1
+          fi
+
+      - name: Show deterministic run summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .tabbyguard/run_summary.json ]; then
+            cat .tabbyguard/run_summary.json
+          fi
+
+      - name: Stop demo site
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/tabbyguard-demo.pid ]; then
+            kill "$(cat /tmp/tabbyguard-demo.pid)" 2>/dev/null || true
+          fi
