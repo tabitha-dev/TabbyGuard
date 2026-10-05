@@ -1,5 +1,5 @@
 // GENERATED DEPENDENCY RUNTIME for TabbyGuard. Contains only reachable third-party modules from the pinned V1 dependency bundle.
-require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 /***/ 1:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
