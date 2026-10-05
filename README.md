@@ -165,14 +165,14 @@ This keeps the system useful even when a heuristic is uncertain.
 
 TabbyGuard uses both filenames and bounded patch context when choosing checks.
 
-| Change signal | Likely risk | Targeted checks |
-|---|---|---|
-| `Header.tsx`, `Nav.tsx`, menu markup | Responsive navigation and focus | Interaction, keyboard, layout, accessibility, runtime |
-| `CheckoutForm.tsx`, form markup | Labels, focus, validation, client errors | Interaction, keyboard, accessibility, runtime |
-| `Modal.tsx`, dialog/overlay markup | Escape behavior, visibility, focus | Interaction, keyboard, accessibility, layout |
-| CSS/theme/token changes | Overflow and contrast | Accessibility, mobile/desktop layout |
-| Layout/grid/container changes | Clipping and horizontal scroll | Layout, runtime |
-| Query/API/state changes | Browser exceptions and failed calls | Runtime, first-party network |
+| Change signal                        | Likely risk                              | Targeted checks                                       |
+| ------------------------------------ | ---------------------------------------- | ----------------------------------------------------- |
+| `Header.tsx`, `Nav.tsx`, menu markup | Responsive navigation and focus          | Interaction, keyboard, layout, accessibility, runtime |
+| `CheckoutForm.tsx`, form markup      | Labels, focus, validation, client errors | Interaction, keyboard, accessibility, runtime         |
+| `Modal.tsx`, dialog/overlay markup   | Escape behavior, visibility, focus       | Interaction, keyboard, accessibility, layout          |
+| CSS/theme/token changes              | Overflow and contrast                    | Accessibility, mobile/desktop layout                  |
+| Layout/grid/container changes        | Clipping and horizontal scroll           | Layout, runtime                                       |
+| Query/API/state changes              | Browser exceptions and failed calls      | Runtime, first-party network                          |
 
 When no specific rule matches, TabbyGuard falls back to a compact smoke plan instead of attempting to test the entire application.
 
@@ -224,12 +224,12 @@ If TabbyGuard cannot identify a safe visible control, the result is **skipped** 
 
 This is one of the most important V2 changes.
 
-| Status | Meaning | Creates a finding? |
-|---|---|---:|
-| `passed` | The targeted behavior was evaluated and worked | No |
-| `failed` | Concrete browser evidence reproduced a defect | **Yes** |
-| `skipped` | No safe/relevant target could be identified | No |
-| `inconclusive` | The page did not provide enough evidence either way | No |
+| Status         | Meaning                                             | Creates a finding? |
+| -------------- | --------------------------------------------------- | -----------------: |
+| `passed`       | The targeted behavior was evaluated and worked      |                 No |
+| `failed`       | Concrete browser evidence reproduced a defect       |            **Yes** |
+| `skipped`      | No safe/relevant target could be identified         |                 No |
+| `inconclusive` | The page did not provide enough evidence either way |                 No |
 
 For example:
 
@@ -367,15 +367,15 @@ examples/demo-site/
 
 They are designed to test both positive and negative behavior:
 
-| Fixture | Expected result |
-|---|---|
-| Clean page | No layout finding |
+| Fixture                          | Expected result         |
+| -------------------------------- | ----------------------- |
+| Clean page                       | No layout finding       |
 | Missing nav target on clean page | `skipped`, not a defect |
-| Mobile overflow | Layout finding |
-| Accessibility regression | Axe finding |
-| Runtime exception | Runtime finding |
-| Broken Escape behavior | Interaction finding |
-| Blocked Tab progression | Keyboard finding |
+| Mobile overflow                  | Layout finding          |
+| Accessibility regression         | Axe finding             |
+| Runtime exception                | Runtime finding         |
+| Broken Escape behavior           | Interaction finding     |
+| Blocked Tab progression          | Keyboard finding        |
 
 Run the fixture server locally:
 
@@ -458,34 +458,34 @@ Other CI steps can respond to the result without parsing Markdown.
 
 ## ⚙️ Configuration
 
-| Input | Required | Default | Description |
-|---|---:|---|---|
-| `github-token` | Yes | — | Reads PR metadata and posts the review |
-| `preview-url` | Yes | — | Preview deployment to test |
-| `mode` | No | `deterministic` | `deterministic` or `assisted` |
-| `fail-on-severity` | No | `high` | `none`, `critical`, `high`, `medium`, or `low` |
-| `routes` | No | `/` | Comma-separated approved routes |
-| `openai-api-key` | No | — | Required only for assisted mode |
-| `openai-model` | No | `gpt-5.6-terra` | Model used in assisted mode |
-| `artifact-dir` | No | `.tabbyguard` | Local evidence directory |
-| `upload-artifacts` | No | `true` | Upload evidence to the workflow run |
-| `browser-channel` | No | `chrome` | Installed browser channel |
-| `max-checks` | No | `16` | Maximum targeted browser checks, 1–24 |
-| `post-comment` | No | `true` | Post/update the PR review |
+| Input              | Required | Default         | Description                                    |
+| ------------------ | -------: | --------------- | ---------------------------------------------- |
+| `github-token`     |      Yes | —               | Reads PR metadata and posts the review         |
+| `preview-url`      |      Yes | —               | Preview deployment to test                     |
+| `mode`             |       No | `deterministic` | `deterministic` or `assisted`                  |
+| `fail-on-severity` |       No | `high`          | `none`, `critical`, `high`, `medium`, or `low` |
+| `routes`           |       No | `/`             | Comma-separated approved routes                |
+| `openai-api-key`   |       No | —               | Required only for assisted mode                |
+| `openai-model`     |       No | `gpt-5.6-terra` | Model used in assisted mode                    |
+| `artifact-dir`     |       No | `.tabbyguard`   | Local evidence directory                       |
+| `upload-artifacts` |       No | `true`          | Upload evidence to the workflow run            |
+| `browser-channel`  |       No | `chrome`        | Installed browser channel                      |
+| `max-checks`       |       No | `16`            | Maximum targeted browser checks, 1–24          |
+| `post-comment`     |       No | `true`          | Post/update the PR review                      |
 
 ### Outputs
 
-| Output | Meaning |
-|---|---|
-| `result` | `pass`, `warn`, or `fail` |
-| `findings-count` | Total findings |
-| `critical-count` | Critical findings |
-| `high-count` | High findings |
-| `medium-count` | Medium findings |
-| `low-count` | Low findings |
-| `run-summary` | Path to `run_summary.json` |
-| `evidence-path` | Evidence directory |
-| `artifact-id` | Uploaded artifact ID when available |
+| Output           | Meaning                             |
+| ---------------- | ----------------------------------- |
+| `result`         | `pass`, `warn`, or `fail`           |
+| `findings-count` | Total findings                      |
+| `critical-count` | Critical findings                   |
+| `high-count`     | High findings                       |
+| `medium-count`   | Medium findings                     |
+| `low-count`      | Low findings                        |
+| `run-summary`    | Path to `run_summary.json`          |
+| `evidence-path`  | Evidence directory                  |
+| `artifact-id`    | Uploaded artifact ID when available |
 
 ---
 
@@ -511,18 +511,18 @@ See [`SECURITY.md`](./SECURITY.md) for more detail.
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Language | TypeScript |
-| Action runtime | Composite wrapper + bundled Node 24 core |
-| Browser automation | Playwright Core |
-| Browser on hosted runner | Installed Chrome |
-| Accessibility | Axe via `@axe-core/playwright` |
-| Schema validation | Zod |
-| GitHub integration | GitHub Actions Toolkit / REST API |
-| Optional AI | OpenAI Responses API + Structured Outputs |
-| Tests | Vitest + real browser fixtures |
-| Evidence | Screenshots, traces, logs, JSON, Actions artifacts |
+| Layer                    | Technology                                         |
+| ------------------------ | -------------------------------------------------- |
+| Language                 | TypeScript                                         |
+| Action runtime           | Composite wrapper + bundled Node 24 core           |
+| Browser automation       | Playwright Core                                    |
+| Browser on hosted runner | Installed Chrome                                   |
+| Accessibility            | Axe via `@axe-core/playwright`                     |
+| Schema validation        | Zod                                                |
+| GitHub integration       | GitHub Actions Toolkit / REST API                  |
+| Optional AI              | OpenAI Responses API + Structured Outputs          |
+| Tests                    | Vitest + real browser fixtures                     |
+| Evidence                 | Screenshots, traces, logs, JSON, Actions artifacts |
 
 ---
 

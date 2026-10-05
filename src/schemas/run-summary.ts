@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { ChangedFileSchema } from './change.js';
-import { FindingSchema } from './finding.js';
-import { TestPlanItemSchema } from './test-plan.js';
+import { z } from "zod";
+import { ChangedFileSchema } from "./change.js";
+import { FindingSchema } from "./finding.js";
+import { TestPlanItemSchema } from "./test-plan.js";
 
 export const PRContextSchema = z.object({
   owner: z.string(),
@@ -12,16 +12,21 @@ export const PRContextSchema = z.object({
   previewUrl: z.string(),
   runId: z.number().optional(),
   runAttempt: z.number().optional(),
-  serverUrl: z.string().optional()
+  serverUrl: z.string().optional(),
 });
 export type PRContext = z.infer<typeof PRContextSchema>;
 
-export const CheckStatusSchema = z.enum(['passed', 'failed', 'skipped', 'inconclusive']);
+export const CheckStatusSchema = z.enum([
+  "passed",
+  "failed",
+  "skipped",
+  "inconclusive",
+]);
 export type CheckStatus = z.infer<typeof CheckStatusSchema>;
 
 export const RunSummarySchema = z.object({
   context: PRContextSchema,
-  mode: z.enum(['deterministic', 'assisted']),
+  mode: z.enum(["deterministic", "assisted"]),
   modelUsed: z.string(),
   durationMs: z.number(),
   changedFiles: z.array(ChangedFileSchema),
@@ -31,8 +36,8 @@ export const RunSummarySchema = z.object({
     passed: z.number(),
     failed: z.number(),
     skipped: z.number(),
-    inconclusive: z.number()
+    inconclusive: z.number(),
   }),
-  generatedAt: z.string()
+  generatedAt: z.string(),
 });
 export type RunSummary = z.infer<typeof RunSummarySchema>;

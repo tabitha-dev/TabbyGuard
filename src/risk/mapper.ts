@@ -1,7 +1,7 @@
-import type { ChangedFile } from '../schemas/change.js';
-import type { TestPlanItem } from '../schemas/test-plan.js';
-import { slugify } from '../util/fs.js';
-import { riskRules, type RiskRule } from './rules.js';
+import type { ChangedFile } from "../schemas/change.js";
+import type { TestPlanItem } from "../schemas/test-plan.js";
+import { slugify } from "../util/fs.js";
+import { riskRules, type RiskRule } from "./rules.js";
 
 const FRONTEND_EXT = /\.(tsx|jsx|ts|js|vue|svelte|css|scss|sass|html|mdx)$/i;
 
@@ -10,33 +10,33 @@ function fileMatches(rule: RiskRule, file: ChangedFile): boolean {
 
   return Boolean(
     file.patch &&
-      rule.patchPatterns?.some((pattern) => pattern.test(file.patch ?? ''))
+      rule.patchPatterns?.some((pattern) => pattern.test(file.patch ?? "")),
   );
 }
 
 function pickRoute(
   rule: RiskRule,
   routes: string[],
-  matched: ChangedFile[]
+  matched: ChangedFile[],
 ): string {
   if (routes.length === 1) return routes[0];
 
   const haystack = matched
     .map((file) => file.filename)
-    .join(' ')
+    .join(" ")
     .toLowerCase();
 
   const hinted = routes.find((route) => {
-    const normalized = route.toLowerCase().replace(/^\//, '');
+    const normalized = route.toLowerCase().replace(/^\//, "");
 
     if (normalized && haystack.includes(normalized)) return true;
 
     return rule.routeHints?.some(
-      (hint) => normalized.includes(hint) || haystack.includes(hint)
+      (hint) => normalized.includes(hint) || haystack.includes(hint),
     );
   });
 
-  return hinted ?? routes[0] ?? '/';
+  return hinted ?? routes[0] ?? "/";
 }
 
 function dedupe(plan: TestPlanItem[]): TestPlanItem[] {
@@ -55,10 +55,10 @@ function dedupe(plan: TestPlanItem[]): TestPlanItem[] {
 export function createDeterministicPlan(
   changedFiles: ChangedFile[],
   routes: string[],
-  maxChecks = 16
+  maxChecks = 16,
 ): TestPlanItem[] {
   const frontendFiles = changedFiles.filter((file) =>
-    FRONTEND_EXT.test(file.filename)
+    FRONTEND_EXT.test(file.filename),
   );
 
   const plan: TestPlanItem[] = [];
@@ -82,50 +82,50 @@ export function createDeterministicPlan(
           checkType,
           reason: rule.reason,
           changedFiles: matched.map((file) => file.filename),
-          selectors: rule.selectors ?? []
+          selectors: rule.selectors ?? [],
         });
       }
     }
   }
 
   if (plan.length === 0) {
-    const route = routes[0] ?? '/';
+    const route = routes[0] ?? "/";
     const names = frontendFiles.map((file) => file.filename);
 
     const fallbackPlan: TestPlanItem[] = [
       {
-        id: 'fallback-mobile-layout',
-        targetSurface: 'Changed frontend surface',
+        id: "fallback-mobile-layout",
+        targetSurface: "Changed frontend surface",
         route,
-        viewport: 'mobile',
-        checkType: 'layout',
+        viewport: "mobile",
+        checkType: "layout",
         reason:
-          'No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.',
+          "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
         changedFiles: names,
-        selectors: []
+        selectors: [],
       },
       {
-        id: 'fallback-desktop-runtime',
-        targetSurface: 'Changed frontend surface',
+        id: "fallback-desktop-runtime",
+        targetSurface: "Changed frontend surface",
         route,
-        viewport: 'desktop',
-        checkType: 'runtime',
+        viewport: "desktop",
+        checkType: "runtime",
         reason:
-          'No specific risk rule matched, so TabbyGuard is running a runtime smoke check.',
+          "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
         changedFiles: names,
-        selectors: []
+        selectors: [],
       },
       {
-        id: 'fallback-desktop-a11y',
-        targetSurface: 'Changed frontend surface',
+        id: "fallback-desktop-a11y",
+        targetSurface: "Changed frontend surface",
         route,
-        viewport: 'desktop',
-        checkType: 'accessibility',
+        viewport: "desktop",
+        checkType: "accessibility",
         reason:
-          'No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.',
+          "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
         changedFiles: names,
-        selectors: []
-      }
+        selectors: [],
+      },
     ];
 
     return fallbackPlan.slice(0, maxChecks);

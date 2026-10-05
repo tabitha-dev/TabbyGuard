@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const ChangedFileSchema = z.object({
   filename: z.string(),
@@ -6,7 +6,7 @@ export const ChangedFileSchema = z.object({
   additions: z.number().int().nonnegative(),
   deletions: z.number().int().nonnegative(),
   changes: z.number().int().nonnegative(),
-  patch: z.string().optional()
+  patch: z.string().optional(),
 });
 
 export type ChangedFile = z.infer<typeof ChangedFileSchema>;
@@ -14,7 +14,7 @@ export type ChangedFile = z.infer<typeof ChangedFileSchema>;
 export function boundedChanges(
   files: ChangedFile[],
   maxPerFile = 4_000,
-  maxTotal = 16_000
+  maxTotal = 16_000,
 ): ChangedFile[] {
   let remaining = maxTotal;
   return files.map((file) => {
