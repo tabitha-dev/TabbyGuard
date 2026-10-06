@@ -45,7 +45,7 @@
   "dependencies": {
     "@actions/core": "1.11.1",
     "@actions/github": "6.0.1",
-    "@axe-core/playwright": "4.10.2",
+    "@axe-core/playwright": "4.13.0",
     "playwright-core": "1.52.0",
     "zod": "4.6.5"
   },
