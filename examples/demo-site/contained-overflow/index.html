@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Contained overflow fixture</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: system-ui; margin: 0; }
+      main { width: 100%; padding: 24px; }
+      .scroller {
+        width: 100%;
+        overflow-x: auto;
+        border: 1px solid #ccd;
+        padding: 8px;
+      }
+      .chips {
+        display: flex;
+        width: max-content;
+        gap: 8px;
+      }
+      .chips button { white-space: nowrap; }
+      .marquee-wrap {
+        width: 100%;
+        overflow: hidden;
+        margin-top: 24px;
+      }
+      .marquee {
+        display: flex;
+        width: max-content;
+        gap: 12px;
+        transform: translateX(-48px);
+      }
+      .marquee span { white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Contained horizontal content</h1>
+      <div class="scroller">
+        <div class="chips">
+          <button>Frontend proof</button>
+          <button>Healthcare / RCM</button>
+          <button>AI workflow</button>
+          <button>Automation</button>
+        </div>
+      </div>
+      <div class="marquee-wrap">
+        <div class="marquee">
+          <span>Responsive UI</span>
+          <span>JavaScript</span>
+          <span>Dashboards</span>
+          <span>Client Websites</span>
+          <span>Forward Deployed Engineering</span>
+          <span>Healthcare Data</span>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

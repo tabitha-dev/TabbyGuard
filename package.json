@@ -1,6 +1,6 @@
 {
   "name": "tabbyguard",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Evidence-driven frontend QA with browser checks, GitHub PR reporting, and a self-contained visual report.",
   "license": "MIT",
   "type": "commonjs",

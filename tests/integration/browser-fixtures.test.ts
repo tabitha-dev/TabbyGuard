@@ -70,6 +70,15 @@ describe("browser fixtures", () => {
     expect(findings.some((item) => item.category === "layout")).toBe(true);
   }, 30_000);
 
+  it("ignores horizontally contained content that does not widen the page", async () => {
+    const { results, findings } = await run("/contained-overflow", "layout");
+    expect(results[0].layout?.documentWidth).toBeLessThanOrEqual(
+      (results[0].layout?.viewportWidth ?? 0) + 1,
+    );
+    expect(results[0].status).toBe("passed");
+    expect(findings).toHaveLength(0);
+  }, 30_000);
+
   it("detects a runtime exception", async () => {
     const { findings } = await run("/runtime", "runtime");
     expect(findings.some((item) => item.category === "runtime")).toBe(true);
