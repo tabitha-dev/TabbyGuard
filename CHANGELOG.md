@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.1
+
+### Fixed
+
+- Layout checks now use actual document scroll width as the authoritative horizontal-overflow signal instead of treating every visually off-screen descendant as a page-level defect.
+- Intentionally clipped or horizontally scrollable content no longer pollutes overflow evidence when it is contained inside the viewport.
+- Added regression coverage for scrollable chip rows and clipped marquee-style content.
+
 ## 3.0.0
 
 ### Added
