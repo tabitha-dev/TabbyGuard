@@ -1,0 +1,33 @@
+name: Correct v3.0.1 release tags
+
+on:
+  push:
+    branches:
+      - v3-release-candidate
+    paths:
+      - ".github/workflows/fix-v301-tags.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  correct-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Point release tags at main
+        shell: bash
+        run: |
+          MAIN_SHA="$(git rev-parse HEAD)"
+          echo "main=$MAIN_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f v3.0.1 "$MAIN_SHA"
+          git tag -f v3 "$MAIN_SHA"
+          git push origin refs/tags/v3.0.1 --force
+          git push origin refs/tags/v3 --force
