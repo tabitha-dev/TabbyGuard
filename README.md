@@ -383,6 +383,7 @@ npm ci
 npm run verify
 npm run check:package
 npm audit --omit=dev --audit-level=high
+npm audit --audit-level=high
 ```
 
 ---

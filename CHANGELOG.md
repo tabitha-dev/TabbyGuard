@@ -2,6 +2,13 @@
 
 ## 3.1.0 - 2026-10-26
 
+### Security
+
+- Update Zod to a patched release.
+- Replace vulnerable Undici and multipart-parser dependencies using pinned npm overrides, without requiring a major GitHub client SDK migration.
+- Patch Vitest, Vite, and worker-pool development dependencies to address build-tool advisories.
+- Require npm tarball validation and production dependency checks in CI and release workflows.
+
 ### Performance
 
 - Reuse one browser navigation for multiple layout, runtime, and network checks on the same route and viewport.
