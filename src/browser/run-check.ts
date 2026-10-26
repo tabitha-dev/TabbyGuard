@@ -146,12 +146,15 @@ type SharedSession = {
   navigationError?: string;
 };
 
-async function captureViewportScreenshot(page: Page, destination: string): Promise<void> {
+async function captureViewportScreenshot(
+  page: Page,
+  destination: string,
+): Promise<void> {
   // Full-page captures on very long sites can exceed practical browser image
   // dimensions, duplicate fixed content, and leave lazy reveals invisible.
   // Capture the real viewport and render reduced-motion content for evidence.
-  const previouslyReduced = await page.evaluate(() =>
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  const previouslyReduced = await page.evaluate(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   try {

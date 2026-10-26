@@ -217,11 +217,18 @@ describe("browser fixtures", () => {
       browserChannel: "chromium",
       screenshotMode: "all",
     });
-    expect(results.map((result) => result.status)).toEqual(["passed", "passed"]);
+    expect(results.map((result) => result.status)).toEqual([
+      "passed",
+      "passed",
+    ]);
     for (const result of results) {
-      const snapshot = result.evidence.find((item) => item.note === "Visual snapshot");
+      const snapshot = result.evidence.find(
+        (item) => item.note === "Visual snapshot",
+      );
       expect(snapshot).toBeDefined();
-      const bytes = await fs.readFile(path.join(root, ".tabbyguard-test", snapshot!.localPath));
+      const bytes = await fs.readFile(
+        path.join(root, ".tabbyguard-test", snapshot!.localPath),
+      );
       expect(bytes.toString("ascii", 1, 4)).toBe("PNG");
       const width = bytes.readUInt32BE(16);
       const height = bytes.readUInt32BE(20);
