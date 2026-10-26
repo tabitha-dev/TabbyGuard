@@ -48,7 +48,7 @@
     "@actions/github": "6.0.1",
     "@axe-core/playwright": "4.10.2",
     "playwright-core": "1.52.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "22.15.0",
@@ -58,5 +58,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "undici": "6.29.1",
+    "@fastify/busboy": "3.2.2"
   }
 }
