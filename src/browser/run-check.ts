@@ -372,12 +372,31 @@ export async function runBrowserChecks(
           }
         }
       } finally {
-        await context.tracing.stop({ path: tracePath }).catch(() => undefined);
-        evidence.push({
-          type: "trace",
-          localPath: traceRel,
-          note: "Playwright trace",
-        });
+        if (session) {
+          session.evidences.push(evidence);
+          session.remaining--;
+          if (session.remaining === 0) {
+            try {
+              await context.tracing.stop({ path: tracePath });
+              for (const individualEvidence of session.evidences) {
+                individualEvidence.push({
+                  type: "trace",
+                  localPath: traceRel,
+                  note: "Shared Playwright trace for read-only checks",
+                });
+              }
+            } catch {
+              notes.push("Shared Playwright trace could not be captured.");
+            }
+          }
+        } else {
+          await context.tracing.stop({ path: tracePath }).catch(() => undefined);
+          evidence.push({
+            type: "trace",
+            localPath: traceRel,
+            note: "Playwright trace",
+          });
+        }
 
         const raw = {
           item,
@@ -399,7 +418,10 @@ export async function runBrowserChecks(
           localPath: logRel,
           note: "Raw browser check log",
         });
-        await context.close().catch(() => undefined);
+        if (!session || session.remaining === 0) {
+          await context.close().catch(() => undefined);
+          if (session) sharedSessions.delete(key);
+        }
       }
 
       results.push({
@@ -408,9 +430,9 @@ export async function runBrowserChecks(
         status,
         durationMs: Date.now() - started,
         documentStatus,
-        consoleMessages,
-        pageErrors,
-        networkFailures,
+        consoleMessages: [...consoleMessages],
+        pageErrors: [...pageErrors],
+        networkFailures: [...networkFailures],
         axeViolations,
         layout,
         interaction,
@@ -420,6 +442,9 @@ export async function runBrowserChecks(
       });
     }
   } finally {
+    for (const session of sharedSessions.values()) {
+      await session.context.close().catch(() => undefined);
+    }
     await browser.close().catch(() => undefined);
   }
 
