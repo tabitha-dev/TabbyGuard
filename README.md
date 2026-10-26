@@ -193,6 +193,12 @@ none      no PNG screenshots
 
 Playwright traces and raw browser logs remain available regardless of screenshot mode.
 
+### Page reuse and isolation
+
+For performance, **layout, runtime, and network** checks aimed at the same route and viewport share a single navigation, even when checks are not next to each other in the plan. They share one complete Playwright trace, while retaining individual logs and failure screenshots. Navigation errors and HTTP status are retained for each affected check.
+
+**Accessibility (Axe), keyboard, and interaction** probes continue in fresh contexts. This avoids leaking injected scripts, keyboard focus, or user interaction state between checks. The output remains in the original planned check order. Runtime gains depend on the number of repeated passive checks; routes with only one check are unaffected.
+
 ---
 
 ## Check states

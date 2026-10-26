@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { runBrowserChecks } from "../../src/browser/run-check.js";
 import { summarizeDeterministically } from "../../src/reporting/findings.js";
 import type { CheckType, TestPlanItem } from "../../src/schemas/test-plan.js";
@@ -52,7 +53,106 @@ async function run(route: string, checkType: CheckType, surface?: string) {
   return { results, findings: summarizeDeterministically(results) };
 }
 
+async function pageLoads(route: string): Promise<number> {
+  const url = new URL("/__page_loads", baseUrl);
+  url.searchParams.set("route", route);
+  const response = await fetch(url);
+  const data = (await response.json()) as { count: number };
+  return data.count;
+}
+
 describe("browser fixtures", () => {
+  it("reuses one navigation for nonadjacent passive probes without changing test order", async () => {
+    const before = await pageLoads("/clean");
+    const checks = [
+      ...plan("/clean", "layout"),
+      ...plan("/clean", "keyboard"),
+      ...plan("/clean", "runtime"),
+      ...plan("/clean", "network"),
+    ];
+    const results = await runBrowserChecks({
+      previewUrl: baseUrl,
+      artifactDir: path.join(root, ".tabbyguard-test"),
+      testPlan: checks,
+      browserChannel: "chromium",
+      screenshotMode: "all",
+    });
+    const after = await pageLoads("/clean");
+    expect(after - before).toBe(2); // One passive session + isolated keyboard check.
+    expect(results.map((result) => result.item.checkType)).toEqual([
+      "layout", "keyboard", "runtime", "network",
+    ]);
+    expect(results.map((result) => result.status)).toEqual([
+      "passed", "passed", "passed", "passed",
+    ]);
+    const traceFor = (index: number) =>
+      results[index].evidence.find((entry) => entry.type === "trace")?.localPath;
+    expect(traceFor(0)).toBe(traceFor(2));
+    expect(traceFor(0)).toBe(traceFor(3));
+    expect(traceFor(1)).not.toBe(traceFor(0));
+    expect(results.flatMap((r) => r.evidence).filter((e) => e.note === "Visual snapshot")).toHaveLength(1);
+    for (const result of results) {
+      const log = result.evidence.find((e) => e.type === "log");
+      expect(log).toBeDefined();
+      expect(await fs.stat(path.join(root, ".tabbyguard-test", log!.localPath))).toBeTruthy();
+      expect(await fs.stat(path.join(root, ".tabbyguard-test", result.evidence.find((e) => e.type === "trace")!.localPath))).toBeTruthy();
+    }
+  }, 40_000);
+
+  it("keeps axe scanning isolated from reused passive checks", async () => {
+    const before = await pageLoads("/clean");
+    const results = await runBrowserChecks({
+      previewUrl: baseUrl,
+      artifactDir: path.join(root, ".tabbyguard-test"),
+      testPlan: [
+        ...plan("/clean", "layout"),
+        ...plan("/clean", "accessibility"),
+        ...plan("/clean", "runtime"),
+      ],
+      browserChannel: "chromium",
+      screenshotMode: "all",
+    });
+    expect((await pageLoads("/clean")) - before).toBe(2);
+    expect(results.map((r) => r.status)).toEqual(["passed", "passed", "passed"]);
+    expect(results[0].evidence.find((e) => e.type === "trace")?.localPath)
+      .toBe(results[2].evidence.find((e) => e.type === "trace")?.localPath);
+    expect(results[1].evidence.find((e) => e.type === "trace")?.localPath)
+      .not.toBe(results[0].evidence.find((e) => e.type === "trace")?.localPath);
+  }, 40_000);
+
+  it("retains runtime errors and HTTP failures for each reused check", async () => {
+    const results = await runBrowserChecks({
+      previewUrl: baseUrl,
+      artifactDir: path.join(root, ".tabbyguard-test"),
+      testPlan: [
+        ...plan("/runtime", "runtime"),
+        ...plan("/runtime", "network"),
+      ],
+      browserChannel: "chromium",
+      screenshotMode: "failures",
+    });
+    expect(results[0].status).toBe("failed");
+    expect(results[0].pageErrors.length).toBeGreaterThan(0);
+    expect(summarizeDeterministically(results).some((f) => f.category === "runtime")).toBe(true);
+    expect(results[0].evidence.some((e) => e.type === "screenshot")).toBe(true);
+  }, 40_000);
+
+  it("propagates a missing document status without treating the error page as test data", async () => {
+    const results = await runBrowserChecks({
+      previewUrl: baseUrl,
+      artifactDir: path.join(root, ".tabbyguard-test"),
+      testPlan: [
+        ...plan("/does-not-exist", "layout"),
+        ...plan("/does-not-exist", "network"),
+      ],
+      browserChannel: "chromium",
+      screenshotMode: "failures",
+    });
+    expect(results.map((r) => r.documentStatus)).toEqual([404, 404]);
+    expect(results.map((r) => r.status)).toEqual(["failed", "failed"]);
+    expect(results.every((r) => r.notes.some((note) => note.includes("not run")))).toBe(true);
+  }, 40_000);
+
   it("keeps a clean layout finding-free", async () => {
     const { findings } = await run("/clean", "layout");
     expect(findings).toHaveLength(0);
