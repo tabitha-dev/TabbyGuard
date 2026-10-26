@@ -31,6 +31,15 @@ jobs:
       - name: Verify formatting, types, tests, and build
         run: npm run verify
 
+      - name: Check npm package contents
+        run: npm run check:package
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit development dependencies
+        run: npm audit --audit-level=high
+
       - name: Confirm bundled action is current
         shell: bash
         run: |

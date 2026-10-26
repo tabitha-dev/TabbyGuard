@@ -1,5 +1,9 @@
 name: Release TabbyGuard
 
+concurrency:
+  group: tabbyguard-release
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +23,7 @@ permissions:
 
 jobs:
   release:
+    if: github.repository == 'tabitha-dev/TabbyGuard'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -73,12 +78,28 @@ jobs:
       - name: Verify source, tests, bundle, and bundled CLI
         run: npm run verify
 
+      - name: Validate publishable npm tarball
+        run: npm run check:package
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit development dependencies
+        run: npm audit --audit-level=high
+
+      - name: Verify npm trusted-publishing CLI requirement
+        shell: bash
+        run: |
+          npm --version
+          node -e "const major = Number(process.version.slice(1).split('.')[0]); if (major < 22) process.exit(1)"
+          node -e "const cp = require('node:child_process'); const version = cp.execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim().split('.').map(Number); if (version[0] < 11 || (version[0] === 11 && version[1] < 5)) { console.error('npm >= 11.5.1 is needed for trusted publishing'); process.exit(1); }"
+
       - name: Confirm committed distribution is current
         shell: bash
         run: git diff --exit-code -- dist/
 
       - name: Publish npm package with trusted publishing
-        run: npm publish --access public
+        run: npm publish --access public --provenance
 
       - name: Create exact and moving major tags
         shell: bash
@@ -88,8 +109,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$VERSION" "$GITHUB_SHA"
-          git tag -f "$MAJOR" "$GITHUB_SHA"
+          # The release workflow can be started from a candidate branch. We
+          # explicitly checked out main, so tag that verified checkout commit,
+          # never GITHUB_SHA from the event that triggered the workflow.
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          git tag "$VERSION" "$RELEASE_SHA"
+          git tag -f "$MAJOR" "$RELEASE_SHA"
           git push origin "refs/tags/$VERSION"
           git push origin "refs/tags/$MAJOR" --force
 
@@ -98,4 +123,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "$VERSION" --title "$VERSION" --generate-notes --verify-tag
+        run: gh release create "$VERSION" --title "TabbyGuard $VERSION" --generate-notes --verify-tag

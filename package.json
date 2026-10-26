@@ -1,6 +1,6 @@
 {
   "name": "tabbyguard",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Evidence-driven frontend QA with browser checks, GitHub PR reporting, and a self-contained visual report.",
   "license": "MIT",
   "type": "commonjs",
@@ -40,22 +40,29 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm run check && npm test && npm run build && npm run test:bundle",
-    "test:bundle": "node scripts/smoke-bundle.mjs"
+    "test:bundle": "node scripts/smoke-bundle.mjs",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
     "@actions/core": "1.11.1",
     "@actions/github": "6.0.1",
     "@axe-core/playwright": "4.10.2",
     "playwright-core": "1.52.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "22.15.0",
     "prettier": "3.5.3",
     "typescript": "5.8.3",
-    "vitest": "3.2.0"
+    "vitest": "3.2.7"
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "undici": "6.29.1",
+    "@fastify/busboy": "3.2.2",
+    "vite": "7.3.7",
+    "tinypool": "2.1.2"
   }
 }
