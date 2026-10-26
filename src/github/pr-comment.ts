@@ -15,8 +15,11 @@ export async function postOrUpdatePrComment(
       issue_number: context.prNumber,
       per_page: 100,
     });
-    const existing = comments.find((comment: { body?: string | null }) =>
-      comment.body?.includes(marker),
+    const existing = comments.find(
+      (comment: { body?: string | null; user?: { login?: string; type?: string } | null }) =>
+        comment.user?.login === "github-actions[bot]" &&
+        comment.user?.type === "Bot" &&
+        comment.body?.startsWith(marker),
     );
     if (existing) {
       await client.rest.issues.updateComment({

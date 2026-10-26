@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { escapeMarkdown, safeHttpLink } from "./markdown-escape.js";
 import type { RunSummary } from "../schemas/run-summary.js";
 
 export async function writeStepSummary(
@@ -10,7 +11,7 @@ export async function writeStepSummary(
     "",
     `**${summary.findings.length} findings · ${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive**`,
     "",
-    `Preview: ${summary.context.previewUrl}`,
+    `Preview: ${escapeMarkdown(summary.context.previewUrl)}`,
     "",
     "| Critical | High | Medium | Low |",
     "|---:|---:|---:|---:|",
@@ -27,7 +28,7 @@ export async function writeStepSummary(
     );
     for (const finding of summary.findings.slice(0, 15)) {
       lines.push(
-        `| ${finding.severity.toUpperCase()} | ${finding.category} | ${finding.title.replace(/\|/g, "\\|")} | ${finding.route.replace(/\|/g, "\\|")} | ${finding.confidence.level} |`,
+        `| ${finding.severity.toUpperCase()} | ${finding.category} | ${escapeMarkdown(finding.title)} | ${escapeMarkdown(finding.route)} | ${finding.confidence.level} |`,
       );
     }
     lines.push("");
@@ -42,9 +43,10 @@ export async function writeStepSummary(
     );
   }
 
-  if (options.artifactUrl) {
+  const safeArtifactUrl = options.artifactUrl ? safeHttpLink(options.artifactUrl) : undefined;
+  if (safeArtifactUrl) {
     lines.push(
-      `**[Download the full visual report and evidence](${options.artifactUrl})**`,
+      `**[Download the full visual report and evidence](${safeArtifactUrl})**`,
       "",
       "Open `report.html` from the downloaded artifact for screenshots, finding details, check coverage, logs, Axe output, and trace links.",
       "",
