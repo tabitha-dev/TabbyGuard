@@ -51,9 +51,7 @@ function routePriority(
     return (
       (normalized !== "" && haystack.includes(normalized)) ||
       Boolean(
-        rule.routeHints?.some(
-          (hint) => normalized.includes(hint) || haystack.includes(hint),
-        ),
+        rule.routeHints?.some((hint) => normalized.includes(hint)),
       )
     );
   });
