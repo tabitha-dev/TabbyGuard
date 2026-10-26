@@ -18,14 +18,14 @@ Run targeted browser QA against a deployed website. Get a clear GitHub Actions s
 
 ![TabbyGuard example visual report, showing a reproduced overflow finding, severity counts, and mobile and desktop viewport snapshots](docs/images/report-preview.png)
 
-*Actual TabbyGuard report from the repository's intentionally broken demo fixture. No mock dashboard or stock imagery.*
+_Actual TabbyGuard report from the repository's intentionally broken demo fixture. No mock dashboard or stock imagery._
 
-| Your question | TabbyGuard shows you |
-| --- | --- |
-| Did the browser encounter a real issue? | Reproducible findings, check statuses, and severity counts |
-| What happened on mobile and desktop? | Viewport-size visual snapshots and failure screenshots |
-| Where can I debug it? | Browser logs, Axe JSON, and Playwright traces |
-| How do I share the result? | A downloadable GitHub Actions artifact with `report.html` and evidence |
+| Your question                           | TabbyGuard shows you                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| Did the browser encounter a real issue? | Reproducible findings, check statuses, and severity counts             |
+| What happened on mobile and desktop?    | Viewport-size visual snapshots and failure screenshots                 |
+| Where can I debug it?                   | Browser logs, Axe JSON, and Playwright traces                          |
+| How do I share the result?              | A downloadable GitHub Actions artifact with `report.html` and evidence |
 
 **Checks include:** runtime exceptions, first-party network failures, automated accessibility violations, horizontal overflow, keyboard focus progression, and safe interaction probes. Checks that cannot be safely completed are recorded as skipped or inconclusive rather than invented defects.
 
