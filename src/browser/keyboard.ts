@@ -1,5 +1,5 @@
 import type { Page } from "playwright-core";
-import { describeActiveElement } from "./selector.js";
+import { describeActiveElement, readFocus } from "./selector.js";
 import type { KeyboardObservation } from "./types.js";
 
 async function visibleFocusableCount(page: Page): Promise<number> {
@@ -34,16 +34,13 @@ export async function runKeyboardProbe(
     };
   }
 
-  const sequence = [await describeActiveElement(page)];
+  const states = [await readFocus(page)];
   await page.keyboard.press("Tab");
-  sequence.push(await describeActiveElement(page));
+  states.push(await readFocus(page));
   await page.keyboard.press("Tab");
-  sequence.push(await describeActiveElement(page));
-  const useful = sequence
-    .slice(1)
-    .filter(
-      (value) => value !== "body" && value !== "html" && value !== "none",
-    );
+  states.push(await readFocus(page));
+  const sequence = states.map((state) => state.description);
+  const useful = states.slice(1).map((state) => state.key).filter((key): key is string => key !== null);
 
   if (useful.length < 2 || new Set(useful).size < 2) {
     return {
