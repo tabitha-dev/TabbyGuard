@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Keyboard focus compared by element identity, not duplicate labels.
+- HTTP 4xx/5xx page routes now generate a high-severity finding.
+- Covered interaction targets are inconclusive rather than CI failures.
+- The GitHub Action supports standalone events outside pull requests.
+- Strict CLI parsing with flags before/after URLs.
+- Canceled requests and third-party console noise are excluded.
+- Markdown rendering and PR-comment ownership are hardened.
+- Distinct runtime errors are not deduplicated by title alone.
+- Critical Axe violations carry critical severity.
+- Assisted-mode fallback emits a diagnostic warning.
+
 ## 3.0.1
 
 ### Fixed

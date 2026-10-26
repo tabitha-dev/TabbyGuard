@@ -38,6 +38,24 @@ describe("evidence-backed findings", () => {
     expect(summarizeDeterministically([result])).toHaveLength(0);
   });
 
+  it("retains distinct runtime errors for the same route", () => {
+    const result = baseResult();
+    result.status = "failed";
+    result.item.checkType = "runtime";
+    result.pageErrors = ["First error", "Second error"];
+    expect(summarizeDeterministically([result])).toHaveLength(2);
+  });
+
+  it("maps critical Axe results to critical severity", () => {
+    const result = baseResult();
+    result.status = "failed";
+    result.item.checkType = "accessibility";
+    result.axeViolations = [
+      { id: "aria-valid-attr", impact: "critical", nodes: 1 },
+    ];
+    expect(summarizeDeterministically([result])[0].severity).toBe("critical");
+  });
+
   it("creates a finding only after an observed interaction failure", () => {
     const result = baseResult();
     result.status = "failed";

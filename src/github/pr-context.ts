@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import type { ChangedFile } from "../schemas/change.js";
 import { boundedChanges } from "../schemas/change.js";
-import type { PRContext } from "../schemas/run-summary.js";
+import type { PRContext, RunContext } from "../schemas/run-summary.js";
 
 export type GitHubClient = ReturnType<typeof github.getOctokit>;
 
@@ -10,23 +10,35 @@ export function getOctokit(token: string): GitHubClient {
   return github.getOctokit(token);
 }
 
-export function getCurrentPrContext(previewUrl: string): PRContext {
+export type ActionRunContext =
+  | PRContext
+  | (RunContext & { kind: "standalone" });
+
+export function getCurrentRunContext(previewUrl: string): ActionRunContext {
   const pullRequest = github.context.payload.pull_request;
-  if (!pullRequest)
-    throw new Error("TabbyGuard must run in a pull_request workflow context.");
   const owner = github.context.repo.owner;
   const repo = github.context.repo.repo;
-  return {
-    kind: "github",
+  const shared = {
     owner,
     repo,
-    repoFullName: `${owner}/${repo}`,
-    prNumber: pullRequest.number,
-    commitSha: pullRequest.head?.sha ?? github.context.sha,
+    repoFullName: owner + "/" + repo,
     previewUrl,
     runId: Number(process.env.GITHUB_RUN_ID || "0") || undefined,
     runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT || "0") || undefined,
     serverUrl: process.env.GITHUB_SERVER_URL ?? "https://github.com",
+  };
+  if (!pullRequest) {
+    return {
+      ...shared,
+      kind: "standalone",
+      commitSha: github.context.sha || undefined,
+    };
+  }
+  return {
+    ...shared,
+    kind: "github",
+    prNumber: pullRequest.number,
+    commitSha: pullRequest.head?.sha ?? github.context.sha,
   };
 }
 

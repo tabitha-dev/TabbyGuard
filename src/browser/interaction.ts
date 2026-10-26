@@ -1,6 +1,6 @@
 import type { Locator, Page } from "playwright-core";
 import type { TestPlanItem } from "../schemas/test-plan.js";
-import { describeActiveElement } from "./selector.js";
+import { describeActiveElement, readFocus } from "./selector.js";
 import type { InteractionObservation } from "./types.js";
 
 const MENU_SELECTORS = [
@@ -43,6 +43,35 @@ async function firstVisible(
   return undefined;
 }
 
+function firstLine(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .split("\n")[0]
+    .trim();
+}
+
+function blockedTarget(
+  kind: InteractionObservation["kind"],
+  attempted: string[],
+  focusBefore: string,
+  error: unknown,
+): InteractionObservation {
+  return {
+    status: "inconclusive",
+    kind,
+    attempted,
+    failures: [],
+    reason:
+      "A visible " +
+      kind +
+      " target could not be operated (" +
+      firstLine(error) +
+      "), so no defect was inferred.",
+    focusBefore,
+  };
+}
+
 export async function runInteractionProbe(
   page: Page,
   item: TestPlanItem,
@@ -50,7 +79,8 @@ export async function runInteractionProbe(
   const attempted: string[] = [];
   const failures: string[] = [];
   const surface = `${item.targetSurface} ${item.reason}`.toLowerCase();
-  const focusBefore = await describeActiveElement(page);
+  const focusBeforeState = await readFocus(page);
+  const focusBefore = focusBeforeState.description;
 
   if (
     surface.includes("nav") ||
@@ -73,10 +103,14 @@ export async function runInteractionProbe(
       };
     }
     attempted.push(`click ${target.selector}`);
-    await target.locator.click({ timeout: 2_000 });
-    await page.waitForTimeout(150);
-    attempted.push("press Escape");
-    await page.keyboard.press("Escape");
+    try {
+      await target.locator.click({ timeout: 2_000 });
+      await page.waitForTimeout(150);
+      attempted.push("press Escape");
+      await page.keyboard.press("Escape");
+    } catch (error) {
+      return blockedTarget("navigation", attempted, focusBefore, error);
+    }
     return {
       status: "passed",
       kind: "navigation",
@@ -107,8 +141,12 @@ export async function runInteractionProbe(
       };
     }
     attempted.push(`click ${target.selector}`);
-    await target.locator.click({ timeout: 2_000 });
-    await page.waitForTimeout(150);
+    try {
+      await target.locator.click({ timeout: 2_000 });
+      await page.waitForTimeout(150);
+    } catch (error) {
+      return blockedTarget("dialog", attempted, focusBefore, error);
+    }
     const dialog = page
       .locator('[role="dialog"], dialog, [aria-modal="true"]')
       .first();
@@ -176,9 +214,18 @@ export async function runInteractionProbe(
       };
     }
     attempted.push(`focus ${target.selector}`);
-    await target.locator.focus({ timeout: 2_000 });
-    const focusAfter = await describeActiveElement(page);
-    if (focusAfter === focusBefore || focusAfter === "body") {
+    let focusAfterState;
+    try {
+      await target.locator.focus({ timeout: 2_000 });
+      focusAfterState = await readFocus(page);
+    } catch (error) {
+      return blockedTarget("form", attempted, focusBefore, error);
+    }
+    const focusAfter = focusAfterState.description;
+    if (
+      focusAfterState.key === null ||
+      focusAfterState.key === focusBeforeState.key
+    ) {
       failures.push("A visible form control could not receive focus.");
       return {
         status: "failed",

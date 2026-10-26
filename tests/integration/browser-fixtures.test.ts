@@ -101,6 +101,31 @@ describe("browser fixtures", () => {
     expect(findings.some((item) => item.category === "keyboard")).toBe(true);
   }, 30_000);
 
+  it("does not flag focus progression between plain links", async () => {
+    const { results, findings } = await run("/clean", "keyboard");
+    expect(results[0].status).toBe("passed");
+    expect(findings).toHaveLength(0);
+  }, 30_000);
+
+  it("fails for a route that returns HTTP 404", async () => {
+    const { results, findings } = await run("/does-not-exist", "layout");
+    expect(results[0].status).toBe("failed");
+    expect(results[0].documentStatus).toBe(404);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].category).toBe("network");
+    expect(findings[0].severity).toBe("high");
+  }, 30_000);
+
+  it("treats covered interaction targets as inconclusive", async () => {
+    const { results, findings } = await run(
+      "/blocked-interaction",
+      "interaction",
+      "Navigation",
+    );
+    expect(results[0].status).toBe("inconclusive");
+    expect(findings).toHaveLength(0);
+  }, 30_000);
+
   it("does not turn a missing navigation target into a defect", async () => {
     const { results, findings } = await run(
       "/clean",

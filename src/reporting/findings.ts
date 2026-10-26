@@ -38,7 +38,7 @@ function evidenceFor(result: BrowserCheckResult): Finding["evidence"] {
 
 function severityForAxe(impact?: string | null): Severity {
   return impact === "critical"
-    ? "high"
+    ? "critical"
     : impact === "serious"
       ? "medium"
       : "low";
@@ -58,6 +58,33 @@ export function summarizeDeterministically(
       changedFiles: result.item.changedFiles,
       evidence: evidenceFor(result),
     };
+
+    if (result.documentStatus !== undefined && result.documentStatus >= 400) {
+      const title = "Route returned HTTP " + result.documentStatus;
+      findings.push({
+        ...common,
+        id: makeId(result, title),
+        category: "network",
+        severity: "high",
+        confidence: confidence(result, [
+          "The route's own document response had HTTP status " +
+            result.documentStatus +
+            ".",
+        ]),
+        title,
+        summary:
+          "GET " +
+          result.url +
+          " responded with HTTP " +
+          result.documentStatus +
+          ", so the page under test did not load.",
+        suggestedCause:
+          result.documentStatus >= 500
+            ? "The preview's server or rendering for this route is failing. Inspect server logs for the route."
+            : "The route may be misspelled, removed, renamed, or protected in the preview deployment.",
+      });
+      continue;
+    }
 
     if (result.item.checkType === "runtime") {
       for (const error of result.pageErrors.slice(0, 3)) {
@@ -232,7 +259,7 @@ export function summarizeDeterministically(
   const seen = new Set<string>();
   return findings
     .filter((finding) => {
-      const key = `${finding.category}:${finding.title}:${finding.route}`;
+      const key = `${finding.category}:${finding.title}:${finding.route}:${finding.summary}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

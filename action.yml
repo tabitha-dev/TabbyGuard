@@ -4,8 +4,8 @@ author: "Tabitha Khadse"
 
 inputs:
   github-token:
-    description: "GitHub token used to read PR metadata and post the TabbyGuard review"
-    required: true
+    description: "GitHub token used to read PR metadata and post the TabbyGuard review; optional for standalone runs"
+    required: false
   preview-url:
     description: "Preview deployment URL to test"
     required: true

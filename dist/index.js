@@ -230449,18 +230449,31 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runAction = runAction;
 const core = __importStar(__nccwpck_require__(7484));
+const github = __importStar(__nccwpck_require__(3228));
 const node_path_1 = __importDefault(require("node:path"));
 const run_js_1 = __nccwpck_require__(99011);
 const pr_context_js_1 = __nccwpck_require__(99014);
 const counts_js_1 = __nccwpck_require__(99016);
-const input_js_1 = __nccwpck_require__(99028);
+const input_js_1 = __nccwpck_require__(99029);
 async function runAction() {
-    const githubToken = (0, input_js_1.readInput)("github-token", true);
+    const githubToken = (0, input_js_1.readInput)("github-token");
     const previewUrl = (0, input_js_1.readInput)("preview-url", true);
-    new URL(previewUrl);
-    const context = (0, pr_context_js_1.getCurrentPrContext)(previewUrl);
-    const client = (0, pr_context_js_1.getOctokit)(githubToken);
-    const changedFiles = await (0, pr_context_js_1.getChangedFiles)(client, context);
+    const parsedUrl = new URL(previewUrl);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("preview-url must be an http(s) URL");
+    }
+    const context = (0, pr_context_js_1.getCurrentRunContext)(previewUrl);
+    if (context.kind === "github" && !githubToken) {
+        throw new Error("github-token is required for pull request checks");
+    }
+    const changedFiles = context.kind === "github"
+        ? await (0, pr_context_js_1.getChangedFiles)((0, pr_context_js_1.getOctokit)(githubToken), context)
+        : [];
+    if (context.kind === "standalone") {
+        core.info("No pull request on " +
+            (github.context.eventName || "workflow") +
+            " event. Running standalone smoke plan without PR review.");
+    }
     const artifactDir = node_path_1.default.resolve((0, input_js_1.readInput)("artifact-dir") || ".tabbyguard");
     const mode = (0, input_js_1.readMode)();
     const openaiApiKey = (0, input_js_1.readInput)("openai-api-key");
@@ -230507,8 +230520,8 @@ async function runAction() {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAssistedPlan = createAssistedPlan;
 exports.enrichFindings = enrichFindings;
-const test_plan_js_1 = __nccwpck_require__(99026);
-const fs_js_1 = __nccwpck_require__(99027);
+const test_plan_js_1 = __nccwpck_require__(99027);
+const fs_js_1 = __nccwpck_require__(99028);
 const planJsonSchema = {
     type: "object",
     additionalProperties: false,
@@ -230742,11 +230755,33 @@ async function firstVisible(page, selectors) {
     }
     return undefined;
 }
+function firstLine(error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return message
+        .replace(/\u001b\[[0-9;]*m/g, "")
+        .split("\n")[0]
+        .trim();
+}
+function blockedTarget(kind, attempted, focusBefore, error) {
+    return {
+        status: "inconclusive",
+        kind,
+        attempted,
+        failures: [],
+        reason: "A visible " +
+            kind +
+            " target could not be operated (" +
+            firstLine(error) +
+            "), so no defect was inferred.",
+        focusBefore,
+    };
+}
 async function runInteractionProbe(page, item) {
     const attempted = [];
     const failures = [];
     const surface = `${item.targetSurface} ${item.reason}`.toLowerCase();
-    const focusBefore = await (0, selector_js_1.describeActiveElement)(page);
+    const focusBeforeState = await (0, selector_js_1.readFocus)(page);
+    const focusBefore = focusBeforeState.description;
     if (surface.includes("nav") ||
         surface.includes("menu") ||
         surface.includes("header")) {
@@ -230765,10 +230800,15 @@ async function runInteractionProbe(page, item) {
             };
         }
         attempted.push(`click ${target.selector}`);
-        await target.locator.click({ timeout: 2_000 });
-        await page.waitForTimeout(150);
-        attempted.push("press Escape");
-        await page.keyboard.press("Escape");
+        try {
+            await target.locator.click({ timeout: 2_000 });
+            await page.waitForTimeout(150);
+            attempted.push("press Escape");
+            await page.keyboard.press("Escape");
+        }
+        catch (error) {
+            return blockedTarget("navigation", attempted, focusBefore, error);
+        }
         return {
             status: "passed",
             kind: "navigation",
@@ -230794,8 +230834,13 @@ async function runInteractionProbe(page, item) {
             };
         }
         attempted.push(`click ${target.selector}`);
-        await target.locator.click({ timeout: 2_000 });
-        await page.waitForTimeout(150);
+        try {
+            await target.locator.click({ timeout: 2_000 });
+            await page.waitForTimeout(150);
+        }
+        catch (error) {
+            return blockedTarget("dialog", attempted, focusBefore, error);
+        }
         const dialog = page
             .locator('[role="dialog"], dialog, [aria-modal="true"]')
             .first();
@@ -230855,9 +230900,17 @@ async function runInteractionProbe(page, item) {
             };
         }
         attempted.push(`focus ${target.selector}`);
-        await target.locator.focus({ timeout: 2_000 });
-        const focusAfter = await (0, selector_js_1.describeActiveElement)(page);
-        if (focusAfter === focusBefore || focusAfter === "body") {
+        let focusAfterState;
+        try {
+            await target.locator.focus({ timeout: 2_000 });
+            focusAfterState = await (0, selector_js_1.readFocus)(page);
+        }
+        catch (error) {
+            return blockedTarget("form", attempted, focusBefore, error);
+        }
+        const focusAfter = focusAfterState.description;
+        if (focusAfterState.key === null ||
+            focusAfterState.key === focusBeforeState.key) {
             failures.push("A visible form control could not receive focus.");
             return {
                 status: "failed",
@@ -230921,14 +230974,16 @@ async function runKeyboardProbe(page) {
             reason: "Fewer than two visible focusable elements were present, so a focus-order defect was not inferred.",
         };
     }
-    const sequence = [await (0, selector_js_1.describeActiveElement)(page)];
+    const states = [await (0, selector_js_1.readFocus)(page)];
     await page.keyboard.press("Tab");
-    sequence.push(await (0, selector_js_1.describeActiveElement)(page));
+    states.push(await (0, selector_js_1.readFocus)(page));
     await page.keyboard.press("Tab");
-    sequence.push(await (0, selector_js_1.describeActiveElement)(page));
-    const useful = sequence
+    states.push(await (0, selector_js_1.readFocus)(page));
+    const sequence = states.map((state) => state.description);
+    const useful = states
         .slice(1)
-        .filter((value) => value !== "body" && value !== "html" && value !== "none");
+        .map((state) => state.key)
+        .filter((key) => key !== null);
     if (useful.length < 2 || new Set(useful).size < 2) {
         return {
             status: "failed",
@@ -231031,8 +231086,8 @@ exports.runBrowserChecks = runBrowserChecks;
 const promises_1 = __importDefault(require("node:fs/promises"));
 const node_path_1 = __importDefault(require("node:path"));
 const playwright_core_1 = __nccwpck_require__(3219);
-const test_plan_js_1 = __nccwpck_require__(99026);
-const fs_js_1 = __nccwpck_require__(99027);
+const test_plan_js_1 = __nccwpck_require__(99027);
+const fs_js_1 = __nccwpck_require__(99028);
 const a11y_js_1 = __nccwpck_require__(99002);
 const interaction_js_1 = __nccwpck_require__(99003);
 const keyboard_js_1 = __nccwpck_require__(99004);
@@ -231156,6 +231211,7 @@ async function runBrowserChecks(options) {
             let layout;
             let interaction;
             let keyboard;
+            let documentStatus;
             let status = "inconclusive";
             await context.tracing.start({
                 screenshots: true,
@@ -231163,7 +231219,9 @@ async function runBrowserChecks(options) {
                 sources: true,
             });
             page.on("console", (message) => {
-                if (message.type() === "error" || message.type() === "warning") {
+                const location = message.location()?.url;
+                if ((message.type() === "error" || message.type() === "warning") &&
+                    (!location || isFirstParty(location, url))) {
                     consoleMessages.push({
                         type: message.type(),
                         text: message.text(),
@@ -231174,6 +231232,8 @@ async function runBrowserChecks(options) {
             page.on("pageerror", (error) => pageErrors.push(error.message));
             page.on("requestfailed", (request) => {
                 if (!isFirstParty(request.url(), url))
+                    return;
+                if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
                     return;
                 networkFailures.push({
                     url: request.url(),
@@ -231192,10 +231252,11 @@ async function runBrowserChecks(options) {
                 });
             });
             try {
-                await page.goto(url, {
+                const response = await page.goto(url, {
                     waitUntil: "domcontentloaded",
                     timeout: 30_000,
                 });
+                documentStatus = response?.status();
                 try {
                     await page.waitForLoadState("networkidle", { timeout: 4_000 });
                 }
@@ -231217,7 +231278,14 @@ async function runBrowserChecks(options) {
                         notes.push("Visual snapshot could not be captured.");
                     }
                 }
-                if (item.checkType === "accessibility") {
+                if (documentStatus !== undefined && documentStatus >= 400) {
+                    notes.push("Route returned HTTP " +
+                        documentStatus +
+                        "; the " +
+                        item.checkType +
+                        " probe was not run.");
+                }
+                else if (item.checkType === "accessibility") {
                     axeViolations = await (0, a11y_js_1.runA11yScan)(page);
                     await (0, fs_js_1.writeJson)(a11yPath, axeViolations);
                     evidence.push({
@@ -231247,7 +231315,10 @@ async function runBrowserChecks(options) {
                     keyboard,
                     notes,
                 };
-                status = statusForCheck(rawWithoutStatus);
+                status =
+                    documentStatus !== undefined && documentStatus >= 400
+                        ? "failed"
+                        : statusForCheck(rawWithoutStatus);
                 if (status === "failed" && options.screenshotMode !== "none") {
                     await page.screenshot({ path: screenshotPath, fullPage: true });
                     evidence.push({
@@ -231285,6 +231356,7 @@ async function runBrowserChecks(options) {
                     item,
                     url,
                     status,
+                    documentStatus,
                     consoleMessages,
                     pageErrors,
                     networkFailures,
@@ -231307,6 +231379,7 @@ async function runBrowserChecks(options) {
                 url,
                 status,
                 durationMs: Date.now() - started,
+                documentStatus,
                 consoleMessages,
                 pageErrors,
                 networkFailures,
@@ -231332,6 +231405,7 @@ async function runBrowserChecks(options) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.describeActiveElement = describeActiveElement;
+exports.readFocus = readFocus;
 async function describeActiveElement(page) {
     return page.evaluate(() => {
         const el = document.activeElement;
@@ -231346,6 +231420,32 @@ async function describeActiveElement(page) {
             ? `[data-testid="${el.getAttribute("data-testid")}"]`
             : "";
         return `${tag}${id}${aria}${testid}`;
+    });
+}
+// Compare the identity of focused elements, not their textual description.
+async function readFocus(page) {
+    return page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el)
+            return { key: null, description: "none" };
+        const tag = el.tagName.toLowerCase();
+        if (el === document.body || el === document.documentElement) {
+            return { key: null, description: tag };
+        }
+        const store = window;
+        store.__tabbyguardFocusIds ??= new WeakMap();
+        let id = store.__tabbyguardFocusIds.get(el);
+        if (id === undefined) {
+            id = store.__tabbyguardNextFocusId =
+                (store.__tabbyguardNextFocusId ?? 0) + 1;
+            store.__tabbyguardFocusIds.set(el, id);
+        }
+        const name = el.getAttribute("aria-label") ||
+            (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
+        return {
+            key: String(id),
+            description: tag + (el.id ? "#" + el.id : name ? '("' + name + '")' : ""),
+        };
     });
 }
 
@@ -231387,16 +231487,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseCliArgs = parseCliArgs;
 exports.runCli = runCli;
 const node_path_1 = __importDefault(require("node:path"));
 const node_child_process_1 = require("node:child_process");
+const node_util_1 = require("node:util");
 const run_js_1 = __nccwpck_require__(99011);
 function usage() {
-    return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help                            Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
-}
-function valueAfter(args, name) {
-    const index = args.indexOf(name);
-    return index >= 0 ? args[index + 1] : undefined;
+    return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help, -h                        Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
 }
 function parseSeverity(value) {
     if (!["none", "critical", "high", "medium", "low"].includes(value)) {
@@ -231416,6 +231514,79 @@ function parseMaxChecks(value) {
         throw new Error("--max-checks must be an integer from 1 to 24");
     }
     return parsed;
+}
+function parseTargetUrl(value) {
+    let parsed;
+    try {
+        parsed = new URL(value);
+    }
+    catch {
+        throw new Error("Invalid URL: " + value + ". Provide a full https:// URL.");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error("URL must use http(s): " + value);
+    }
+    return parsed;
+}
+function parseCliArgs(args) {
+    let parsed;
+    try {
+        parsed = (0, node_util_1.parseArgs)({
+            args,
+            allowPositionals: true,
+            strict: true,
+            options: {
+                routes: { type: "string" },
+                "fail-on-severity": { type: "string" },
+                "screenshot-mode": { type: "string" },
+                "browser-channel": { type: "string" },
+                "max-checks": { type: "string" },
+                "artifact-dir": { type: "string" },
+                mode: { type: "string" },
+                open: { type: "boolean" },
+                help: { type: "boolean", short: "h" },
+            },
+        });
+    }
+    catch (error) {
+        throw new Error((error instanceof Error ? error.message : String(error)) +
+            "\n\n" +
+            usage());
+    }
+    const { values, positionals } = parsed;
+    if (values.help || args.length === 0)
+        return { kind: "help" };
+    if (!positionals.length)
+        throw new Error("A URL is required.\n\n" + usage());
+    if (positionals.length !== 1)
+        throw new Error("Expected one URL, got " +
+            positionals.length +
+            ". Use --routes a,b for multiple routes.\n\n" +
+            usage());
+    const targetUrl = parseTargetUrl(positionals[0]);
+    const routes = (values.routes || targetUrl.pathname + targetUrl.search || "/")
+        .split(",")
+        .map((route) => route.trim())
+        .filter(Boolean);
+    const mode = values.mode || "deterministic";
+    if (mode !== "deterministic" && mode !== "assisted")
+        throw new Error("--mode must be deterministic or assisted");
+    return {
+        kind: "run",
+        targetUrl,
+        open: values.open ?? false,
+        options: {
+            context: { kind: "standalone", previewUrl: targetUrl.origin },
+            changedFiles: [],
+            routes,
+            maxChecks: parseMaxChecks(values["max-checks"] || "16"),
+            mode,
+            failOnSeverity: parseSeverity(values["fail-on-severity"] || "high"),
+            artifactDir: node_path_1.default.resolve(values["artifact-dir"] || ".tabbyguard"),
+            browserChannel: values["browser-channel"] || "chrome",
+            screenshotMode: parseScreenshotMode(values["screenshot-mode"] || "all"),
+        },
+    };
 }
 function openFile(filePath) {
     const platform = process.platform;
@@ -231440,40 +231611,19 @@ function openFile(filePath) {
         // The printed report path remains available if the OS opener is unavailable.
     }
 }
-async function runCli() {
-    const args = process.argv.slice(2);
-    if (args.includes("--help") || args.length === 0) {
+async function runCli(args = process.argv.slice(2)) {
+    const request = parseCliArgs(args);
+    if (request.kind === "help") {
         process.stdout.write(usage());
         return;
     }
-    const urlArg = args.find((arg) => !arg.startsWith("--"));
-    if (!urlArg)
-        throw new Error("A URL is required.\n\n" + usage());
-    const parsedUrl = new URL(urlArg);
-    const previewUrl = parsedUrl.origin;
-    const routeArg = valueAfter(args, "--routes");
-    const routes = (routeArg || `${parsedUrl.pathname}${parsedUrl.search}` || "/")
-        .split(",")
-        .map((route) => route.trim())
-        .filter(Boolean);
-    const mode = (valueAfter(args, "--mode") || "deterministic");
-    if (mode !== "deterministic" && mode !== "assisted") {
-        throw new Error("--mode must be deterministic or assisted");
-    }
-    const artifactDir = node_path_1.default.resolve(valueAfter(args, "--artifact-dir") || ".tabbyguard");
-    process.stdout.write(`\nTabbyGuard\n${parsedUrl.toString()}\n\nRunning browser checks...\n`);
+    const { targetUrl, options } = request;
+    const artifactDir = options.artifactDir;
+    process.stdout.write("\nTabbyGuard\n" + targetUrl.toString() + "\n\nRunning browser checks...\n");
     const run = await (0, run_js_1.runTabbyGuard)({
-        context: { kind: "standalone", previewUrl },
-        changedFiles: [],
-        routes,
-        maxChecks: parseMaxChecks(valueAfter(args, "--max-checks") || "16"),
-        mode,
-        failOnSeverity: parseSeverity(valueAfter(args, "--fail-on-severity") || "high"),
+        ...options,
         openaiApiKey: process.env.OPENAI_API_KEY,
         model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
-        artifactDir,
-        browserChannel: valueAfter(args, "--browser-channel") || "chrome",
-        screenshotMode: parseScreenshotMode(valueAfter(args, "--screenshot-mode") || "all"),
     });
     const counts = run.summary.findingCounts;
     process.stdout.write(`\n${run.summary.result.toUpperCase()} · ${run.summary.findings.length} finding${run.summary.findings.length === 1 ? "" : "s"}\n` +
@@ -231481,7 +231631,7 @@ async function runCli() {
         `${run.summary.checkCounts.passed} passed · ${run.summary.checkCounts.failed} failed · ${run.summary.checkCounts.skipped} skipped · ${run.summary.checkCounts.inconclusive} inconclusive\n\n` +
         `Visual report: ${run.reportPath}\n` +
         `Evidence: ${artifactDir}\n\n`);
-    if (args.includes("--open"))
+    if (request.open)
         openFile(run.reportPath);
     if (run.failed)
         process.exitCode = 1;
@@ -231503,9 +231653,9 @@ const run_check_js_1 = __nccwpck_require__(99006);
 const counts_js_1 = __nccwpck_require__(99016);
 const findings_js_1 = __nccwpck_require__(99017);
 const html_js_1 = __nccwpck_require__(99018);
-const mapper_js_1 = __nccwpck_require__(99021);
-const fs_js_1 = __nccwpck_require__(99027);
-const severity_js_1 = __nccwpck_require__(99029);
+const mapper_js_1 = __nccwpck_require__(99022);
+const fs_js_1 = __nccwpck_require__(99028);
+const severity_js_1 = __nccwpck_require__(99030);
 const promises_1 = __importDefault(require("node:fs/promises"));
 function serializeCheck(result) {
     return {
@@ -231568,7 +231718,8 @@ async function runTabbyGuard(options) {
             });
             modelUsed = options.model;
         }
-        catch {
+        catch (error) {
+            console.warn("TabbyGuard: assisted planning failed; using deterministic checks.", error instanceof Error ? error.name : "Unknown error");
             testPlan = fallbackPlan;
         }
     }
@@ -231592,8 +231743,8 @@ async function runTabbyGuard(options) {
             });
             modelUsed = options.model;
         }
-        catch {
-            // Evidence-backed deterministic findings remain authoritative.
+        catch (error) {
+            console.warn("TabbyGuard: assisted finding enrichment failed; retaining deterministic findings.", error instanceof Error ? error.name : "Unknown error");
         }
     }
     const findingCounts = (0, counts_js_1.countFindings)(findings);
@@ -231670,10 +231821,10 @@ const promises_1 = __importDefault(require("node:fs/promises"));
 const core = __importStar(__nccwpck_require__(7484));
 const pr_context_js_1 = __nccwpck_require__(99014);
 const pr_comment_js_1 = __nccwpck_require__(99013);
-const markdown_js_1 = __nccwpck_require__(99019);
-const step_summary_js_1 = __nccwpck_require__(99020);
-const run_summary_js_1 = __nccwpck_require__(99025);
-const input_js_1 = __nccwpck_require__(99028);
+const markdown_js_1 = __nccwpck_require__(99020);
+const step_summary_js_1 = __nccwpck_require__(99021);
+const run_summary_js_1 = __nccwpck_require__(99026);
+const input_js_1 = __nccwpck_require__(99029);
 function emitAnnotations(summary) {
     for (const finding of summary.findings.slice(0, 12)) {
         const message = `${finding.title}: ${finding.summary}`;
@@ -231755,7 +231906,9 @@ async function postOrUpdatePrComment(client, context, body, marker) {
             issue_number: context.prNumber,
             per_page: 100,
         });
-        const existing = comments.find((comment) => comment.body?.includes(marker));
+        const existing = comments.find((comment) => comment.user?.login === "github-actions[bot]" &&
+            comment.user?.type === "Bot" &&
+            comment.body?.startsWith(marker));
         if (existing) {
             await client.rest.issues.updateComment({
                 owner: context.owner,
@@ -231821,31 +231974,39 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOctokit = getOctokit;
-exports.getCurrentPrContext = getCurrentPrContext;
+exports.getCurrentRunContext = getCurrentRunContext;
 exports.getChangedFiles = getChangedFiles;
 const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
-const change_js_1 = __nccwpck_require__(99023);
+const change_js_1 = __nccwpck_require__(99024);
 function getOctokit(token) {
     return github.getOctokit(token);
 }
-function getCurrentPrContext(previewUrl) {
+function getCurrentRunContext(previewUrl) {
     const pullRequest = github.context.payload.pull_request;
-    if (!pullRequest)
-        throw new Error("TabbyGuard must run in a pull_request workflow context.");
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
-    return {
-        kind: "github",
+    const shared = {
         owner,
         repo,
-        repoFullName: `${owner}/${repo}`,
-        prNumber: pullRequest.number,
-        commitSha: pullRequest.head?.sha ?? github.context.sha,
+        repoFullName: owner + "/" + repo,
         previewUrl,
         runId: Number(process.env.GITHUB_RUN_ID || "0") || undefined,
         runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT || "0") || undefined,
         serverUrl: process.env.GITHUB_SERVER_URL ?? "https://github.com",
+    };
+    if (!pullRequest) {
+        return {
+            ...shared,
+            kind: "standalone",
+            commitSha: github.context.sha || undefined,
+        };
+    }
+    return {
+        ...shared,
+        kind: "github",
+        prNumber: pullRequest.number,
+        commitSha: pullRequest.head?.sha ?? github.context.sha,
     };
 }
 async function getChangedFiles(client, context) {
@@ -231973,7 +232134,7 @@ function countFindings(findings) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeDeterministically = summarizeDeterministically;
-const fs_js_1 = __nccwpck_require__(99027);
+const fs_js_1 = __nccwpck_require__(99028);
 function confidence(result, extra = []) {
     const reasons = [
         `Browser check reproduced a concrete ${result.item.checkType} signal.`,
@@ -232002,7 +232163,7 @@ function evidenceFor(result) {
 }
 function severityForAxe(impact) {
     return impact === "critical"
-        ? "high"
+        ? "critical"
         : impact === "serious"
             ? "medium"
             : "low";
@@ -232019,6 +232180,30 @@ function summarizeDeterministically(results) {
             changedFiles: result.item.changedFiles,
             evidence: evidenceFor(result),
         };
+        if (result.documentStatus !== undefined && result.documentStatus >= 400) {
+            const title = "Route returned HTTP " + result.documentStatus;
+            findings.push({
+                ...common,
+                id: makeId(result, title),
+                category: "network",
+                severity: "high",
+                confidence: confidence(result, [
+                    "The route's own document response had HTTP status " +
+                        result.documentStatus +
+                        ".",
+                ]),
+                title,
+                summary: "GET " +
+                    result.url +
+                    " responded with HTTP " +
+                    result.documentStatus +
+                    ", so the page under test did not load.",
+                suggestedCause: result.documentStatus >= 500
+                    ? "The preview's server or rendering for this route is failing. Inspect server logs for the route."
+                    : "The route may be misspelled, removed, renamed, or protected in the preview deployment.",
+            });
+            continue;
+        }
         if (result.item.checkType === "runtime") {
             for (const error of result.pageErrors.slice(0, 3)) {
                 const title = "Browser runtime exception";
@@ -232169,7 +232354,7 @@ function summarizeDeterministically(results) {
     const seen = new Set();
     return findings
         .filter((finding) => {
-        const key = `${finding.category}:${finding.title}:${finding.route}`;
+        const key = `${finding.category}:${finding.title}:${finding.route}:${finding.summary}`;
         if (seen.has(key))
             return false;
         seen.add(key);
@@ -232596,9 +232781,40 @@ function renderHtmlReport(summary) {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.escapeMarkdown = escapeMarkdown;
+exports.safeHttpLink = safeHttpLink;
+/** Escape page-controlled text before rendering GitHub-flavored Markdown. */
+function escapeMarkdown(value) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/([\\\x60*_{}\[\]()#+.!|~\-])/g, "\\$1")
+        .replace(/@/g, "&#64;")
+        .replace(/\r?\n/g, " ");
+}
+function safeHttpLink(value) {
+    try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol)
+            ? url.toString()
+            : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+
+/***/ }),
+/***/ 99020:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderPrComment = renderPrComment;
+const markdown_escape_js_1 = __nccwpck_require__(99019);
 function escapeTable(value) {
-    return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+    return (0, markdown_escape_js_1.escapeMarkdown)(value);
 }
 function workflowUrl(summary) {
     const { serverUrl, owner, repo, runId } = summary.context;
@@ -232610,19 +232826,19 @@ function findingDetail(finding) {
     return [
         "",
         "<details>",
-        `<summary><strong>${finding.severity.toUpperCase()}</strong> · ${finding.title}</summary>`,
+        `<summary><strong>${finding.severity.toUpperCase()}</strong> · ${(0, markdown_escape_js_1.escapeMarkdown)(finding.title)}</summary>`,
         "",
-        `**Route:** ${finding.route}`,
+        `**Route:** ${(0, markdown_escape_js_1.escapeMarkdown)(finding.route)}`,
         "",
-        finding.summary,
+        (0, markdown_escape_js_1.escapeMarkdown)(finding.summary),
         "",
-        `**Likely cause:** ${finding.suggestedCause}`,
+        `**Likely cause:** ${(0, markdown_escape_js_1.escapeMarkdown)(finding.suggestedCause)}`,
         "",
         `**Confidence:** ${finding.confidence.level}`,
-        ...finding.confidence.reasons.map((reason) => `- ${reason}`),
+        ...finding.confidence.reasons.map((reason) => `- ${(0, markdown_escape_js_1.escapeMarkdown)(reason)}`),
         "",
         finding.changedFiles.length
-            ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${file}\``).join(", ")}`
+            ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${(0, markdown_escape_js_1.escapeMarkdown)(file)}\``).join(", ")}`
             : "**Related changes:** no direct file correlation",
         "",
         "</details>",
@@ -232630,6 +232846,7 @@ function findingDetail(finding) {
 }
 function renderPrComment(summary, marker = "<!-- tabbyguard-review -->", artifactUrl) {
     const runUrl = workflowUrl(summary);
+    const safeArtifactUrl = artifactUrl ? (0, markdown_escape_js_1.safeHttpLink)(artifactUrl) : undefined;
     const lines = [
         marker,
         "## TabbyGuard",
@@ -232638,12 +232855,12 @@ function renderPrComment(summary, marker = "<!-- tabbyguard-review -->", artifac
         "",
         `**${summary.findingCounts.critical} critical · ${summary.findingCounts.high} high · ${summary.findingCounts.medium} medium · ${summary.findingCounts.low} low**`,
         "",
-        `Preview: ${summary.context.previewUrl}  `,
+        `Preview: ${(0, markdown_escape_js_1.escapeMarkdown)(summary.context.previewUrl)}  `,
         `${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive`,
         "",
     ];
-    if (artifactUrl) {
-        lines.push(`**[Download visual report and evidence](${artifactUrl})**`, "Open `report.html` for visual snapshots, screenshots, detailed findings, check coverage, logs, and trace links.", "");
+    if (safeArtifactUrl) {
+        lines.push(`**[Download visual report and evidence](${safeArtifactUrl})**`, "Open `report.html` for visual snapshots, screenshots, detailed findings, check coverage, logs, and trace links.", "");
     }
     else if (runUrl) {
         lines.push(`[Open workflow run](${runUrl})`, "");
@@ -232668,7 +232885,7 @@ function renderPrComment(summary, marker = "<!-- tabbyguard-review -->", artifac
 }
 
 /***/ }),
-/***/ 99020:
+/***/ 99021:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232708,13 +232925,14 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeStepSummary = writeStepSummary;
 const core = __importStar(__nccwpck_require__(7484));
+const markdown_escape_js_1 = __nccwpck_require__(99019);
 async function writeStepSummary(summary, options = {}) {
     const lines = [
         `# TabbyGuard — ${summary.result.toUpperCase()}`,
         "",
         `**${summary.findings.length} findings · ${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive**`,
         "",
-        `Preview: ${summary.context.previewUrl}`,
+        `Preview: ${(0, markdown_escape_js_1.escapeMarkdown)(summary.context.previewUrl)}`,
         "",
         "| Critical | High | Medium | Low |",
         "|---:|---:|---:|---:|",
@@ -232724,7 +232942,7 @@ async function writeStepSummary(summary, options = {}) {
     if (summary.findings.length > 0) {
         lines.push("## Findings", "", "| Severity | Area | Finding | Route | Confidence |", "|---|---|---|---|---|");
         for (const finding of summary.findings.slice(0, 15)) {
-            lines.push(`| ${finding.severity.toUpperCase()} | ${finding.category} | ${finding.title.replace(/\|/g, "\\|")} | ${finding.route.replace(/\|/g, "\\|")} | ${finding.confidence.level} |`);
+            lines.push(`| ${finding.severity.toUpperCase()} | ${finding.category} | ${(0, markdown_escape_js_1.escapeMarkdown)(finding.title)} | ${(0, markdown_escape_js_1.escapeMarkdown)(finding.route)} | ${finding.confidence.level} |`);
         }
         lines.push("");
     }
@@ -232734,23 +232952,26 @@ async function writeStepSummary(summary, options = {}) {
     if (summary.snapshots.length > 0) {
         lines.push(`Visual snapshots captured: **${summary.snapshots.length}**`, "");
     }
-    if (options.artifactUrl) {
-        lines.push(`**[Download the full visual report and evidence](${options.artifactUrl})**`, "", "Open `report.html` from the downloaded artifact for screenshots, finding details, check coverage, logs, Axe output, and trace links.", "");
+    const safeArtifactUrl = options.artifactUrl
+        ? (0, markdown_escape_js_1.safeHttpLink)(options.artifactUrl)
+        : undefined;
+    if (safeArtifactUrl) {
+        lines.push(`**[Download the full visual report and evidence](${safeArtifactUrl})**`, "", "Open `report.html` from the downloaded artifact for screenshots, finding details, check coverage, logs, Axe output, and trace links.", "");
     }
     lines.push("---", "_No evidence, no finding. Skipped and inconclusive probes never become defects by themselves._");
     await core.summary.addRaw(lines.join("\n")).write();
 }
 
 /***/ }),
-/***/ 99021:
+/***/ 99022:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createDeterministicPlan = createDeterministicPlan;
 exports.createStandalonePlan = createStandalonePlan;
-const fs_js_1 = __nccwpck_require__(99027);
-const rules_js_1 = __nccwpck_require__(99022);
+const fs_js_1 = __nccwpck_require__(99028);
+const rules_js_1 = __nccwpck_require__(99023);
 const FRONTEND_EXT = /\.(tsx|jsx|ts|js|vue|svelte|css|scss|sass|html|mdx)$/i;
 function fileMatches(rule, file) {
     if (rule.patterns.some((pattern) => pattern.test(file.filename)))
@@ -232912,7 +233133,7 @@ function createStandalonePlan(routes, maxChecks = 16) {
 }
 
 /***/ }),
-/***/ 99022:
+/***/ 99023:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233038,7 +233259,7 @@ exports.riskRules = [
 ];
 
 /***/ }),
-/***/ 99023:
+/***/ 99024:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233066,7 +233287,7 @@ function boundedChanges(files, maxPerFile = 4_000, maxTotal = 16_000) {
 }
 
 /***/ }),
-/***/ 99024:
+/***/ 99025:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233106,16 +233327,16 @@ exports.FindingSchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99025:
+/***/ 99026:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RunSummarySchema = exports.VisualSnapshotSchema = exports.CheckRecordSchema = exports.CheckStatusSchema = exports.GitHubPRContextSchema = exports.RunContextSchema = void 0;
 const zod_1 = __nccwpck_require__(924);
-const change_js_1 = __nccwpck_require__(99023);
-const finding_js_1 = __nccwpck_require__(99024);
-const test_plan_js_1 = __nccwpck_require__(99026);
+const change_js_1 = __nccwpck_require__(99024);
+const finding_js_1 = __nccwpck_require__(99025);
+const test_plan_js_1 = __nccwpck_require__(99027);
 exports.RunContextSchema = zod_1.z.object({
     kind: zod_1.z.enum(["github", "standalone"]),
     previewUrl: zod_1.z.string().url(),
@@ -233191,7 +233412,7 @@ exports.RunSummarySchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99026:
+/***/ 99027:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233230,7 +233451,7 @@ function viewportSize(viewport) {
 }
 
 /***/ }),
-/***/ 99027:
+/***/ 99028:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233272,7 +233493,7 @@ async function listFilesRecursive(dir) {
 }
 
 /***/ }),
-/***/ 99028:
+/***/ 99029:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233377,7 +233598,7 @@ function readScreenshotMode() {
 }
 
 /***/ }),
-/***/ 99029:
+/***/ 99030:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";

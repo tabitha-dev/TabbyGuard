@@ -48,6 +48,7 @@ export type BrowserCheckResult = {
   url: string;
   status: CheckStatus;
   durationMs: number;
+  documentStatus?: number;
   consoleMessages: ConsoleRecord[];
   pageErrors: string[];
   networkFailures: NetworkFailure[];

@@ -1,15 +1,15 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { runTabbyGuard, type ScreenshotMode } from "./core/run.js";
+import { parseArgs } from "node:util";
+import {
+  runTabbyGuard,
+  type ScreenshotMode,
+  type TabbyGuardRunOptions,
+} from "./core/run.js";
 import type { Severity } from "./schemas/finding.js";
 
 function usage(): string {
-  return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help                            Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
-}
-
-function valueAfter(args: string[], name: string): string | undefined {
-  const index = args.indexOf(name);
-  return index >= 0 ? args[index + 1] : undefined;
+  return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help, -h                        Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
 }
 
 function parseSeverity(value: string): "none" | Severity {
@@ -36,6 +36,90 @@ function parseMaxChecks(value: string): number {
   return parsed;
 }
 
+function parseTargetUrl(value: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Invalid URL: " + value + ". Provide a full https:// URL.");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("URL must use http(s): " + value);
+  }
+  return parsed;
+}
+
+export type CliRequest =
+  | { kind: "help" }
+  | {
+      kind: "run";
+      targetUrl: URL;
+      open: boolean;
+      options: Omit<TabbyGuardRunOptions, "openaiApiKey" | "model">;
+    };
+
+export function parseCliArgs(args: string[]): CliRequest {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      allowPositionals: true,
+      strict: true,
+      options: {
+        routes: { type: "string" },
+        "fail-on-severity": { type: "string" },
+        "screenshot-mode": { type: "string" },
+        "browser-channel": { type: "string" },
+        "max-checks": { type: "string" },
+        "artifact-dir": { type: "string" },
+        mode: { type: "string" },
+        open: { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+    });
+  } catch (error) {
+    throw new Error(
+      (error instanceof Error ? error.message : String(error)) +
+        "\n\n" +
+        usage(),
+    );
+  }
+  const { values, positionals } = parsed;
+  if (values.help || args.length === 0) return { kind: "help" };
+  if (!positionals.length) throw new Error("A URL is required.\n\n" + usage());
+  if (positionals.length !== 1)
+    throw new Error(
+      "Expected one URL, got " +
+        positionals.length +
+        ". Use --routes a,b for multiple routes.\n\n" +
+        usage(),
+    );
+  const targetUrl = parseTargetUrl(positionals[0]);
+  const routes = (values.routes || targetUrl.pathname + targetUrl.search || "/")
+    .split(",")
+    .map((route) => route.trim())
+    .filter(Boolean);
+  const mode = values.mode || "deterministic";
+  if (mode !== "deterministic" && mode !== "assisted")
+    throw new Error("--mode must be deterministic or assisted");
+  return {
+    kind: "run",
+    targetUrl,
+    open: values.open ?? false,
+    options: {
+      context: { kind: "standalone", previewUrl: targetUrl.origin },
+      changedFiles: [],
+      routes,
+      maxChecks: parseMaxChecks(values["max-checks"] || "16"),
+      mode,
+      failOnSeverity: parseSeverity(values["fail-on-severity"] || "high"),
+      artifactDir: path.resolve(values["artifact-dir"] || ".tabbyguard"),
+      browserChannel: values["browser-channel"] || "chrome",
+      screenshotMode: parseScreenshotMode(values["screenshot-mode"] || "all"),
+    },
+  };
+}
+
 function openFile(filePath: string): void {
   const platform = process.platform;
   try {
@@ -57,53 +141,22 @@ function openFile(filePath: string): void {
   }
 }
 
-export async function runCli(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args.includes("--help") || args.length === 0) {
+export async function runCli(args = process.argv.slice(2)): Promise<void> {
+  const request = parseCliArgs(args);
+  if (request.kind === "help") {
     process.stdout.write(usage());
     return;
   }
-
-  const urlArg = args.find((arg) => !arg.startsWith("--"));
-  if (!urlArg) throw new Error("A URL is required.\n\n" + usage());
-  const parsedUrl = new URL(urlArg);
-  const previewUrl = parsedUrl.origin;
-  const routeArg = valueAfter(args, "--routes");
-  const routes = (routeArg || `${parsedUrl.pathname}${parsedUrl.search}` || "/")
-    .split(",")
-    .map((route) => route.trim())
-    .filter(Boolean);
-  const mode = (valueAfter(args, "--mode") || "deterministic") as
-    | "deterministic"
-    | "assisted";
-  if (mode !== "deterministic" && mode !== "assisted") {
-    throw new Error("--mode must be deterministic or assisted");
-  }
-  const artifactDir = path.resolve(
-    valueAfter(args, "--artifact-dir") || ".tabbyguard",
-  );
-
+  const { targetUrl, options } = request;
+  const artifactDir = options.artifactDir;
   process.stdout.write(
-    `\nTabbyGuard\n${parsedUrl.toString()}\n\nRunning browser checks...\n`,
+    "\nTabbyGuard\n" + targetUrl.toString() + "\n\nRunning browser checks...\n",
   );
   const run = await runTabbyGuard({
-    context: { kind: "standalone", previewUrl },
-    changedFiles: [],
-    routes,
-    maxChecks: parseMaxChecks(valueAfter(args, "--max-checks") || "16"),
-    mode,
-    failOnSeverity: parseSeverity(
-      valueAfter(args, "--fail-on-severity") || "high",
-    ),
+    ...options,
     openaiApiKey: process.env.OPENAI_API_KEY,
     model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
-    artifactDir,
-    browserChannel: valueAfter(args, "--browser-channel") || "chrome",
-    screenshotMode: parseScreenshotMode(
-      valueAfter(args, "--screenshot-mode") || "all",
-    ),
   });
-
   const counts = run.summary.findingCounts;
   process.stdout.write(
     `\n${run.summary.result.toUpperCase()} · ${run.summary.findings.length} finding${run.summary.findings.length === 1 ? "" : "s"}\n` +
@@ -113,6 +166,6 @@ export async function runCli(): Promise<void> {
       `Evidence: ${artifactDir}\n\n`,
   );
 
-  if (args.includes("--open")) openFile(run.reportPath);
+  if (request.open) openFile(run.reportPath);
   if (run.failed) process.exitCode = 1;
 }

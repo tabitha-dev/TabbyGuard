@@ -164,6 +164,7 @@ export async function runBrowserChecks(
       let layout: BrowserCheckResult["layout"];
       let interaction: BrowserCheckResult["interaction"];
       let keyboard: BrowserCheckResult["keyboard"];
+      let documentStatus: number | undefined;
       let status: CheckStatus = "inconclusive";
 
       await context.tracing.start({
@@ -173,7 +174,11 @@ export async function runBrowserChecks(
       });
 
       page.on("console", (message: ConsoleMessage) => {
-        if (message.type() === "error" || message.type() === "warning") {
+        const location = message.location()?.url;
+        if (
+          (message.type() === "error" || message.type() === "warning") &&
+          (!location || isFirstParty(location, url))
+        ) {
           consoleMessages.push({
             type: message.type(),
             text: message.text(),
@@ -184,6 +189,8 @@ export async function runBrowserChecks(
       page.on("pageerror", (error: Error) => pageErrors.push(error.message));
       page.on("requestfailed", (request: Request) => {
         if (!isFirstParty(request.url(), url)) return;
+        if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
+          return;
         networkFailures.push({
           url: request.url(),
           method: request.method(),
@@ -202,10 +209,11 @@ export async function runBrowserChecks(
       });
 
       try {
-        await page.goto(url, {
+        const response = await page.goto(url, {
           waitUntil: "domcontentloaded",
           timeout: 30_000,
         });
+        documentStatus = response?.status();
         try {
           await page.waitForLoadState("networkidle", { timeout: 4_000 });
         } catch {
@@ -231,7 +239,15 @@ export async function runBrowserChecks(
           }
         }
 
-        if (item.checkType === "accessibility") {
+        if (documentStatus !== undefined && documentStatus >= 400) {
+          notes.push(
+            "Route returned HTTP " +
+              documentStatus +
+              "; the " +
+              item.checkType +
+              " probe was not run.",
+          );
+        } else if (item.checkType === "accessibility") {
           axeViolations = await runA11yScan(page);
           await writeJson(a11yPath, axeViolations);
           evidence.push({
@@ -259,7 +275,10 @@ export async function runBrowserChecks(
           keyboard,
           notes,
         };
-        status = statusForCheck(rawWithoutStatus);
+        status =
+          documentStatus !== undefined && documentStatus >= 400
+            ? "failed"
+            : statusForCheck(rawWithoutStatus);
 
         if (status === "failed" && options.screenshotMode !== "none") {
           await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -296,6 +315,7 @@ export async function runBrowserChecks(
           item,
           url,
           status,
+          documentStatus,
           consoleMessages,
           pageErrors,
           networkFailures,
@@ -319,6 +339,7 @@ export async function runBrowserChecks(
         url,
         status,
         durationMs: Date.now() - started,
+        documentStatus,
         consoleMessages,
         pageErrors,
         networkFailures,

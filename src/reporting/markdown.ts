@@ -1,8 +1,9 @@
+import { escapeMarkdown, safeHttpLink } from "./markdown-escape.js";
 import type { Finding } from "../schemas/finding.js";
 import type { RunSummary } from "../schemas/run-summary.js";
 
 function escapeTable(value: string): string {
-  return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  return escapeMarkdown(value);
 }
 
 function workflowUrl(summary: RunSummary): string | undefined {
@@ -16,19 +17,21 @@ function findingDetail(finding: Finding): string[] {
   return [
     "",
     "<details>",
-    `<summary><strong>${finding.severity.toUpperCase()}</strong> · ${finding.title}</summary>`,
+    `<summary><strong>${finding.severity.toUpperCase()}</strong> · ${escapeMarkdown(finding.title)}</summary>`,
     "",
-    `**Route:** ${finding.route}`,
+    `**Route:** ${escapeMarkdown(finding.route)}`,
     "",
-    finding.summary,
+    escapeMarkdown(finding.summary),
     "",
-    `**Likely cause:** ${finding.suggestedCause}`,
+    `**Likely cause:** ${escapeMarkdown(finding.suggestedCause)}`,
     "",
     `**Confidence:** ${finding.confidence.level}`,
-    ...finding.confidence.reasons.map((reason) => `- ${reason}`),
+    ...finding.confidence.reasons.map(
+      (reason) => `- ${escapeMarkdown(reason)}`,
+    ),
     "",
     finding.changedFiles.length
-      ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${file}\``).join(", ")}`
+      ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${escapeMarkdown(file)}\``).join(", ")}`
       : "**Related changes:** no direct file correlation",
     "",
     "</details>",
@@ -41,6 +44,7 @@ export function renderPrComment(
   artifactUrl?: string,
 ): string {
   const runUrl = workflowUrl(summary);
+  const safeArtifactUrl = artifactUrl ? safeHttpLink(artifactUrl) : undefined;
   const lines: string[] = [
     marker,
     "## TabbyGuard",
@@ -49,14 +53,14 @@ export function renderPrComment(
     "",
     `**${summary.findingCounts.critical} critical · ${summary.findingCounts.high} high · ${summary.findingCounts.medium} medium · ${summary.findingCounts.low} low**`,
     "",
-    `Preview: ${summary.context.previewUrl}  `,
+    `Preview: ${escapeMarkdown(summary.context.previewUrl)}  `,
     `${summary.checkCounts.passed} passed · ${summary.checkCounts.failed} failed · ${summary.checkCounts.skipped} skipped · ${summary.checkCounts.inconclusive} inconclusive`,
     "",
   ];
 
-  if (artifactUrl) {
+  if (safeArtifactUrl) {
     lines.push(
-      `**[Download visual report and evidence](${artifactUrl})**`,
+      `**[Download visual report and evidence](${safeArtifactUrl})**`,
       "Open `report.html` for visual snapshots, screenshots, detailed findings, check coverage, logs, and trace links.",
       "",
     );
