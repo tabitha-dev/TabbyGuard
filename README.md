@@ -67,23 +67,9 @@ Then open **Actions → Frontend QA → Run workflow**, enter the URL of your de
 
 ### Add pull-request reviews
 
-If you want TabbyGuard to comment on pull requests, run it **after** your preview deployment is ready. In the PR workflow, give the job `pull-requests: write` permission and pass these inputs:
+Want automatic PR comments with screenshot and trace evidence? Follow the [copy-ready PR workflow](docs/pr-workflow.md). It includes a working example, the required preview URL setup, and the GitHub permissions. Deploy your preview **before** TabbyGuard runs.
 
-```yaml
-# Inside a job triggered by pull_request, after preview deployment:
-permissions:
-  contents: read
-  pull-requests: write
-
-# Inside the TabbyGuard step's "with:" block:
-with:
-  github-token: ${{ secrets.GITHUB_TOKEN }}
-  preview-url: https://preview.example.com # Replace with your real deployed preview URL
-  routes: /,/pricing
-  fail-on-severity: high
-```
-
-TabbyGuard can then summarize failures in the PR and link its evidence artifact. On forked PRs, GitHub may restrict comment permissions; evidence and the Actions summary remain available.
+TabbyGuard summarizes findings in the PR and links its evidence artifact. On forked PRs, GitHub may restrict comment permissions; evidence and the Actions summary remain available.
 
 ## Run it locally with npm
 
