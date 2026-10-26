@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { DEFAULT_OPENAI_MODEL } from "./ai/default-model.js";
 import * as github from "@actions/github";
 import path from "node:path";
 import { runTabbyGuard } from "./core/run.js";
@@ -59,7 +60,7 @@ export async function runAction(): Promise<void> {
     mode,
     failOnSeverity: readFailOnSeverity(),
     openaiApiKey,
-    model: readInput("openai-model") || "gpt-5.6-terra",
+    model: readInput("openai-model") || DEFAULT_OPENAI_MODEL,
     artifactDir,
     browserChannel: readInput("browser-channel") || "chrome",
     screenshotMode: readScreenshotMode(),

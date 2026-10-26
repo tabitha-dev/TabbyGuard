@@ -1,4 +1,5 @@
 import path from "node:path";
+import { DEFAULT_OPENAI_MODEL } from "./ai/default-model.js";
 import { spawn } from "node:child_process";
 import { parseArgs } from "node:util";
 import {
@@ -155,7 +156,7 @@ export async function runCli(args = process.argv.slice(2)): Promise<void> {
   const run = await runTabbyGuard({
     ...options,
     openaiApiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
+    model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
   });
   const counts = run.summary.findingCounts;
   process.stdout.write(

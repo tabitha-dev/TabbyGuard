@@ -23,9 +23,9 @@ inputs:
   openai-model:
     description: "OpenAI model used in assisted mode"
     required: false
-    default: "gpt-5.6-terra"
+    default: ""
   routes:
-    description: "Optional comma-separated routes to prioritize"
+    description: "Optional comma-separated routes to cover (subject to max-checks)"
     required: false
     default: "/"
   artifact-dir:
