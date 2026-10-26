@@ -82,6 +82,7 @@ describe("browser fixtures", () => {
     expect(results.map((result) => result.item.checkType)).toEqual([
       "layout", "keyboard", "runtime", "network",
     ]);
+    console.log("SHARED DEBUG", JSON.stringify(results.map((result) => ({ checkType: result.item.checkType, errors: result.pageErrors, console: result.consoleMessages, notes: result.notes, status: result.status }))));
     expect(results.map((result) => result.status)).toEqual([
       "passed", "passed", "passed", "passed",
     ]);
@@ -113,6 +114,7 @@ describe("browser fixtures", () => {
       screenshotMode: "all",
     });
     expect((await pageLoads("/clean")) - before).toBe(2);
+    console.log("AXE DEBUG", JSON.stringify(results.map((result) => ({ checkType: result.item.checkType, errors: result.pageErrors, console: result.consoleMessages, notes: result.notes, status: result.status }))));
     expect(results.map((r) => r.status)).toEqual(["passed", "passed", "passed"]);
     expect(results[0].evidence.find((e) => e.type === "trace")?.localPath)
       .toBe(results[2].evidence.find((e) => e.type === "trace")?.localPath);
