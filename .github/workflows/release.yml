@@ -125,4 +125,4 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: gh release create "$VERSION" --title "TabbyGuard $VERSION" --generate-notes --verify-tag
 
-# Publication trigger for vetted TabbyGuard v3.1.0 from protected main.
+# Trigger validated 3.1.1 patch from main (snapshot quality fix).
