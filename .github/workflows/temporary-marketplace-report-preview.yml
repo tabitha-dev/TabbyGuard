@@ -65,7 +65,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md docs/pr-workflow.md docs/images/report-preview.png examples/demo-site/marketplace/index.html .github/workflows/temporary-marketplace-report-preview.yml
+          git add README.md docs/pr-workflow.md docs/images/report-preview.png examples/demo-site/marketplace/index.html
           if ! git diff --cached --quiet; then
             git commit -m "Add real TabbyGuard report screenshot for Marketplace"
             git push origin HEAD:docs/marketplace-onboarding-report-preview-20261026
