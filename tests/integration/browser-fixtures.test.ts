@@ -82,7 +82,6 @@ describe("browser fixtures", () => {
     expect(results.map((result) => result.item.checkType)).toEqual([
       "layout", "keyboard", "runtime", "network",
     ]);
-    console.log("SHARED DEBUG", JSON.stringify(results.map((result) => ({ checkType: result.item.checkType, errors: result.pageErrors, console: result.consoleMessages, notes: result.notes, status: result.status }))));
     expect(results.map((result) => result.status)).toEqual([
       "passed", "passed", "passed", "passed",
     ]);
@@ -114,7 +113,6 @@ describe("browser fixtures", () => {
       screenshotMode: "all",
     });
     expect((await pageLoads("/clean")) - before).toBe(2);
-    console.log("AXE DEBUG", JSON.stringify(results.map((result) => ({ checkType: result.item.checkType, errors: result.pageErrors, console: result.consoleMessages, notes: result.notes, status: result.status }))));
     expect(results.map((r) => r.status)).toEqual(["passed", "passed", "passed"]);
     expect(results[0].evidence.find((e) => e.type === "trace")?.localPath)
       .toBe(results[2].evidence.find((e) => e.type === "trace")?.localPath);
@@ -154,6 +152,12 @@ describe("browser fixtures", () => {
     expect(results.map((r) => r.status)).toEqual(["failed", "failed"]);
     expect(results.every((r) => r.notes.some((note) => note.includes("not run")))).toBe(true);
   }, 40_000);
+
+  it("does not treat a missing browser-requested favicon as a runtime exception", async () => {
+    const { results, findings } = await run("/clean", "runtime");
+    expect(results[0].status).toBe("passed");
+    expect(findings).toHaveLength(0);
+  }, 30_000);
 
   it("keeps a clean layout finding-free", async () => {
     const { findings } = await run("/clean", "layout");

@@ -223,6 +223,14 @@ export async function runBrowserChecks(
 
         page.on("console", (message: ConsoleMessage) => {
         const location = message.location()?.url;
+        // Chromium may request /favicon.ico automatically. A missing icon is
+        // not a JavaScript runtime exception and must not fail the runtime probe.
+        if (
+          message.type() === "error" &&
+          location &&
+          /\/favicon\.ico(?:\?|$)/i.test(location) &&
+          /status of 404/i.test(message.text())
+        ) return;
         if (
           (message.type() === "error" || message.type() === "warning") &&
           (!location || isFirstParty(location, url))
