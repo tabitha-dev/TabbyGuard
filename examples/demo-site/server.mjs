@@ -10,7 +10,9 @@ const server = http.createServer(async (req, res) => {
   const pathname = new URL(req.url || "/", `http://${req.headers.host}`)
     .pathname;
   if (pathname === "/__page_loads") {
-    const observedRoute = new URL(req.url || "/", "http://localhost").searchParams.get("route") || "/clean";
+    const observedRoute =
+      new URL(req.url || "/", "http://localhost").searchParams.get("route") ||
+      "/clean";
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify({ count: servedPages.get(observedRoute) || 0 }));
     return;

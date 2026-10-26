@@ -127,7 +127,6 @@ function posixPath(...parts: string[]): string {
   return path.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
 }
 
-
 // Layout, runtime, and network checks do not intentionally change page state.
 // Axe injects scripts; keyboard and interaction probes manipulate the page.
 // Keep those probes isolated in fresh browser contexts.
@@ -156,7 +155,10 @@ export async function runBrowserChecks(
   const capturedSnapshots = new Set<string>();
   const sessionCounts = new Map<string, number>();
   const sessionKey = (item: BrowserRunOptions["testPlan"][number]): string =>
-    JSON.stringify([resolveTargetUrl(options.previewUrl, item.route), item.viewport]);
+    JSON.stringify([
+      resolveTargetUrl(options.previewUrl, item.route),
+      item.viewport,
+    ]);
   for (const item of options.testPlan) {
     if (!PASSIVE_CHECKS.has(item.checkType)) continue;
     const key = sessionKey(item);
@@ -171,9 +173,11 @@ export async function runBrowserChecks(
       const size = viewportSize(item.viewport);
       const slug = slugify(`${item.id}-${item.viewport}-${item.checkType}`);
       const key = sessionKey(item);
-      const isShared = PASSIVE_CHECKS.has(item.checkType) && (sessionCounts.get(key) ?? 0) > 1;
+      const isShared =
+        PASSIVE_CHECKS.has(item.checkType) && (sessionCounts.get(key) ?? 0) > 1;
       const existingSession = isShared ? sharedSessions.get(key) : undefined;
-      const traceRel = existingSession?.traceRel ??
+      const traceRel =
+        existingSession?.traceRel ??
         (isShared
           ? posixPath("traces", slugify("shared-" + key) + ".zip")
           : posixPath("traces", slug + ".zip"));
@@ -190,22 +194,34 @@ export async function runBrowserChecks(
       const logPath = path.join(options.artifactDir, logRel);
       const a11yPath = path.join(options.artifactDir, a11yRel);
       const snapshotPath = path.join(options.artifactDir, snapshotRel);
-      const consoleMessages: ConsoleRecord[] = existingSession ? [...existingSession.messages] : [];
-      const pageErrors: string[] = existingSession ? [...existingSession.errors] : [];
-      const networkFailures: NetworkFailure[] = existingSession ? [...existingSession.failures] : [];
+      const consoleMessages: ConsoleRecord[] = existingSession
+        ? [...existingSession.messages]
+        : [];
+      const pageErrors: string[] = existingSession
+        ? [...existingSession.errors]
+        : [];
+      const networkFailures: NetworkFailure[] = existingSession
+        ? [...existingSession.failures]
+        : [];
       const notes: string[] = existingSession ? [...existingSession.notes] : [];
       const evidence: BrowserCheckResult["evidence"] = [];
-      const context = existingSession?.context ?? await browser.newContext({ viewport: size });
-      const page = existingSession?.page ?? await context.newPage();
+      const context =
+        existingSession?.context ??
+        (await browser.newContext({ viewport: size }));
+      const page = existingSession?.page ?? (await context.newPage());
       const session: SharedSession | undefined = !isShared
         ? undefined
-        : existingSession ?? {
-            context, page, traceRel,
+        : (existingSession ?? {
+            context,
+            page,
+            traceRel,
             remaining: sessionCounts.get(key) ?? 1,
             evidences: [],
-            messages: consoleMessages, errors: pageErrors,
-            failures: networkFailures, notes,
-          };
+            messages: consoleMessages,
+            errors: pageErrors,
+            failures: networkFailures,
+            notes,
+          });
       if (session && !existingSession) sharedSessions.set(key, session);
       let axeViolations: BrowserCheckResult["axeViolations"] = [];
       let layout: BrowserCheckResult["layout"];
@@ -222,47 +238,48 @@ export async function runBrowserChecks(
         });
 
         page.on("console", (message: ConsoleMessage) => {
-        const location = message.location()?.url;
-        // Chromium may request /favicon.ico automatically. A missing icon is
-        // not a JavaScript runtime exception and must not fail the runtime probe.
-        if (
-          message.type() === "error" &&
-          location &&
-          /\/favicon\.ico(?:\?|$)/i.test(location) &&
-          /status of 404/i.test(message.text())
-        ) return;
-        if (
-          (message.type() === "error" || message.type() === "warning") &&
-          (!location || isFirstParty(location, url))
-        ) {
-          consoleMessages.push({
-            type: message.type(),
-            text: message.text(),
-            location: message.location()?.url,
+          const location = message.location()?.url;
+          // Chromium may request /favicon.ico automatically. A missing icon is
+          // not a JavaScript runtime exception and must not fail the runtime probe.
+          if (
+            message.type() === "error" &&
+            location &&
+            /\/favicon\.ico(?:\?|$)/i.test(location) &&
+            /status of 404/i.test(message.text())
+          )
+            return;
+          if (
+            (message.type() === "error" || message.type() === "warning") &&
+            (!location || isFirstParty(location, url))
+          ) {
+            consoleMessages.push({
+              type: message.type(),
+              text: message.text(),
+              location: message.location()?.url,
+            });
+          }
+        });
+        page.on("pageerror", (error: Error) => pageErrors.push(error.message));
+        page.on("requestfailed", (request: Request) => {
+          if (!isFirstParty(request.url(), url)) return;
+          if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
+            return;
+          networkFailures.push({
+            url: request.url(),
+            method: request.method(),
+            failureText: request.failure()?.errorText,
           });
-        }
-      });
-      page.on("pageerror", (error: Error) => pageErrors.push(error.message));
-      page.on("requestfailed", (request: Request) => {
-        if (!isFirstParty(request.url(), url)) return;
-        if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
-          return;
-        networkFailures.push({
-          url: request.url(),
-          method: request.method(),
-          failureText: request.failure()?.errorText,
         });
-      });
-      page.on("response", (response: Response) => {
-        if (response.status() < 500 || !isFirstParty(response.url(), url)) {
-          return;
-        }
-        networkFailures.push({
-          url: response.url(),
-          method: response.request().method(),
-          status: response.status(),
+        page.on("response", (response: Response) => {
+          if (response.status() < 500 || !isFirstParty(response.url(), url)) {
+            return;
+          }
+          networkFailures.push({
+            url: response.url(),
+            method: response.request().method(),
+            status: response.status(),
+          });
         });
-      });
       }
 
       try {
@@ -275,14 +292,17 @@ export async function runBrowserChecks(
             documentStatus = response?.status();
           } catch (error) {
             if (session) {
-              session.navigationError = error instanceof Error ? error.message : String(error);
+              session.navigationError =
+                error instanceof Error ? error.message : String(error);
             }
             throw error;
           }
           try {
             await page.waitForLoadState("networkidle", { timeout: 4_000 });
           } catch {
-            notes.push("Network did not become idle within 4 seconds; checks continued.");
+            notes.push(
+              "Network did not become idle within 4 seconds; checks continued.",
+            );
           }
           if (session) {
             session.documentStatus = documentStatus;
@@ -398,7 +418,9 @@ export async function runBrowserChecks(
             }
           }
         } else {
-          await context.tracing.stop({ path: tracePath }).catch(() => undefined);
+          await context.tracing
+            .stop({ path: tracePath })
+            .catch(() => undefined);
           evidence.push({
             type: "trace",
             localPath: traceRel,

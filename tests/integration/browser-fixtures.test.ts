@@ -80,22 +80,43 @@ describe("browser fixtures", () => {
     const after = await pageLoads("/clean");
     expect(after - before).toBe(2); // One passive session + isolated keyboard check.
     expect(results.map((result) => result.item.checkType)).toEqual([
-      "layout", "keyboard", "runtime", "network",
+      "layout",
+      "keyboard",
+      "runtime",
+      "network",
     ]);
     expect(results.map((result) => result.status)).toEqual([
-      "passed", "passed", "passed", "passed",
+      "passed",
+      "passed",
+      "passed",
+      "passed",
     ]);
     const traceFor = (index: number) =>
-      results[index].evidence.find((entry) => entry.type === "trace")?.localPath;
+      results[index].evidence.find((entry) => entry.type === "trace")
+        ?.localPath;
     expect(traceFor(0)).toBe(traceFor(2));
     expect(traceFor(0)).toBe(traceFor(3));
     expect(traceFor(1)).not.toBe(traceFor(0));
-    expect(results.flatMap((r) => r.evidence).filter((e) => e.note === "Visual snapshot")).toHaveLength(1);
+    expect(
+      results
+        .flatMap((r) => r.evidence)
+        .filter((e) => e.note === "Visual snapshot"),
+    ).toHaveLength(1);
     for (const result of results) {
       const log = result.evidence.find((e) => e.type === "log");
       expect(log).toBeDefined();
-      expect(await fs.stat(path.join(root, ".tabbyguard-test", log!.localPath))).toBeTruthy();
-      expect(await fs.stat(path.join(root, ".tabbyguard-test", result.evidence.find((e) => e.type === "trace")!.localPath))).toBeTruthy();
+      expect(
+        await fs.stat(path.join(root, ".tabbyguard-test", log!.localPath)),
+      ).toBeTruthy();
+      expect(
+        await fs.stat(
+          path.join(
+            root,
+            ".tabbyguard-test",
+            result.evidence.find((e) => e.type === "trace")!.localPath,
+          ),
+        ),
+      ).toBeTruthy();
     }
   }, 40_000);
 
@@ -113,11 +134,17 @@ describe("browser fixtures", () => {
       screenshotMode: "all",
     });
     expect((await pageLoads("/clean")) - before).toBe(2);
-    expect(results.map((r) => r.status)).toEqual(["passed", "passed", "passed"]);
-    expect(results[0].evidence.find((e) => e.type === "trace")?.localPath)
-      .toBe(results[2].evidence.find((e) => e.type === "trace")?.localPath);
-    expect(results[1].evidence.find((e) => e.type === "trace")?.localPath)
-      .not.toBe(results[0].evidence.find((e) => e.type === "trace")?.localPath);
+    expect(results.map((r) => r.status)).toEqual([
+      "passed",
+      "passed",
+      "passed",
+    ]);
+    expect(results[0].evidence.find((e) => e.type === "trace")?.localPath).toBe(
+      results[2].evidence.find((e) => e.type === "trace")?.localPath,
+    );
+    expect(
+      results[1].evidence.find((e) => e.type === "trace")?.localPath,
+    ).not.toBe(results[0].evidence.find((e) => e.type === "trace")?.localPath);
   }, 40_000);
 
   it("retains runtime errors and HTTP failures for each reused check", async () => {
@@ -133,7 +160,9 @@ describe("browser fixtures", () => {
     });
     expect(results[0].status).toBe("failed");
     expect(results[0].pageErrors.length).toBeGreaterThan(0);
-    expect(summarizeDeterministically(results).some((f) => f.category === "runtime")).toBe(true);
+    expect(
+      summarizeDeterministically(results).some((f) => f.category === "runtime"),
+    ).toBe(true);
     expect(results[0].evidence.some((e) => e.type === "screenshot")).toBe(true);
   }, 40_000);
 
@@ -150,7 +179,9 @@ describe("browser fixtures", () => {
     });
     expect(results.map((r) => r.documentStatus)).toEqual([404, 404]);
     expect(results.map((r) => r.status)).toEqual(["failed", "failed"]);
-    expect(results.every((r) => r.notes.some((note) => note.includes("not run")))).toBe(true);
+    expect(
+      results.every((r) => r.notes.some((note) => note.includes("not run"))),
+    ).toBe(true);
   }, 40_000);
 
   it("does not treat a missing browser-requested favicon as a runtime exception", async () => {
