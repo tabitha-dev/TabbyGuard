@@ -4,8 +4,8 @@ export function escapeMarkdown(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/@/g, "&#64;")
     .replace(/([\\\x60*_{}\[\]()#+.!|~\-])/g, "\\$1")
+    .replace(/@/g, "&#64;")
     .replace(/\r?\n/g, " ");
 }
 
