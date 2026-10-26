@@ -9,7 +9,7 @@ const file = (filename: string, patch = "") => ({
   changes: 4,
   patch,
   it("does not confuse filename fragments with actual risk names", () => {
-    for (const filename of ["src/ui/Cardigan.tsx", "src/store/Statement.ts", "src/ui/Menuet.tsx", "src/ui/Naval.tsx"]) {
+    for (const filename of ["src/ui/Cardigan.tsx", "src/components/Statement.ts", "src/ui/Menuet.tsx", "src/ui/Naval.tsx"]) {
       const plan = createDeterministicPlan([file(filename)], ["/"], 16);
       expect(plan.every((item) => item.targetSurface === "Changed frontend surface")).toBe(true);
     }
