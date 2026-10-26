@@ -1,0 +1,37 @@
+name: Temporary release preparation
+on:
+  push:
+    branches:
+      - release/v3.1.0-readiness-20261026
+
+permissions:
+  contents: write
+
+jobs:
+  verify-prep:
+    if: github.repository == 'tabitha-dev/TabbyGuard' && github.ref == 'refs/heads/release/v3.1.0-readiness-20261026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run format
+      - run: npm run verify
+      - run: npm run check:package
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Commit formatted release package check script
+        shell: bash
+        run: |
+          if ! git diff --quiet -- scripts/check-package.mjs; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add scripts/check-package.mjs
+            git commit -m "Format v3.1.0 npm package inspection"
+            git push origin HEAD:release/v3.1.0-readiness-20261026
+          fi
