@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tall site with scroll reveal</title>
+  <style>
+    body { margin: 0; font: 20px sans-serif; }
+    .hero { background: #5b3dbb; color: white; padding: 40px; }
+    .reveal { opacity: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; }
+    }
+    .long-content { height: 17000px; background: #f8f8fb; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="hero reveal">A visible screenshot should include this content.</div>
+    <div class="long-content">Tall page fixture.</div>
+  </main>
+</body>
+</html>

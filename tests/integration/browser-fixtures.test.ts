@@ -202,6 +202,37 @@ describe("browser fixtures", () => {
     ).toBe(true);
   }, 30_000);
 
+  it("captures actual viewport dimensions on excessively tall animated pages", async () => {
+    const results = await runBrowserChecks({
+      previewUrl: baseUrl,
+      artifactDir: path.join(root, ".tabbyguard-test"),
+      testPlan: [
+        ...plan("/tall-reveal", "layout"),
+        {
+          ...plan("/tall-reveal", "runtime")[0],
+          id: "desktop-long-page",
+          viewport: "desktop",
+        },
+      ],
+      browserChannel: "chromium",
+      screenshotMode: "all",
+    });
+    expect(results.map((result) => result.status)).toEqual(["passed", "passed"]);
+    for (const result of results) {
+      const snapshot = result.evidence.find((item) => item.note === "Visual snapshot");
+      expect(snapshot).toBeDefined();
+      const bytes = await fs.readFile(path.join(root, ".tabbyguard-test", snapshot!.localPath));
+      expect(bytes.toString("ascii", 1, 4)).toBe("PNG");
+      const width = bytes.readUInt32BE(16);
+      const height = bytes.readUInt32BE(20);
+      if (result.item.viewport === "mobile") {
+        expect([width, height]).toEqual([390, 844]);
+      } else {
+        expect([width, height]).toEqual([1440, 900]);
+      }
+    }
+  }, 40_000);
+
   it("detects mobile overflow", async () => {
     const { findings } = await run("/overflow", "layout");
     expect(findings.some((item) => item.category === "layout")).toBe(true);

@@ -87,11 +87,11 @@ function findingCard(finding: Finding, check?: CheckRecord): string {
 }
 
 function snapshotCard(snapshot: VisualSnapshot): string {
-  return `<figure class="snapshot">
+  return `<figure class="snapshot snapshot-${escapeHtml(snapshot.viewport)}">
     <a href="${escapeHtml(snapshot.path)}"><img src="${escapeHtml(snapshot.path)}" alt="${escapeHtml(snapshot.viewport)} snapshot for ${escapeHtml(snapshot.route)}" loading="lazy" /></a>
     <figcaption>
       <strong>${escapeHtml(titleCase(snapshot.viewport))}</strong>
-      <span>${escapeHtml(snapshot.route)}</span>
+      <span>${escapeHtml(snapshot.route)} · Viewport image · Click to open full size</span>
     </figcaption>
   </figure>`;
 }
@@ -242,10 +242,10 @@ export function renderHtmlReport(summary: RunSummary): string {
     .section h2 { font-size: 18px; letter-spacing: -.015em; margin-bottom: 2px; }
     .compact-filter-head { margin-top: -4px; align-items: center; }
     .section-kicker { color: var(--muted); font-size: 12px; }
-    .snapshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .snapshots { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
     .snapshot { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
-    .snapshot a { display: block; background: #e8eaee; max-height: 410px; overflow: auto; }
-    .snapshot img { width: 100%; display: block; }
+    .snapshot a { display: block; background: #e8eaee; max-height: 470px; overflow: auto; }
+    .snapshot img { width: 100%; max-width: 100%; height: auto; display: block; }
     .snapshot figcaption { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
     .snapshot figcaption span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .filters { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -297,6 +297,7 @@ export function renderHtmlReport(summary: RunSummary): string {
       .headline-count { text-align: left; }
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .metric { border-bottom: 1px solid var(--border); }
+      .snapshots { grid-template-columns: minmax(0, 1fr); }
       .finding { grid-template-columns: 1fr; }
       .finding-shot { border-left: 0; border-top: 1px solid var(--border); max-height: 320px; }
       .finding-head, .section-head { align-items: flex-start; flex-direction: column; }

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Capture legible viewport-sized mobile and desktop snapshots instead of problematic full-page images on very tall or animated sites.
+- Temporarily prefer reduced motion during evidence capture, disable animations, and wait briefly for web fonts, restoring the normal browser media mode after each capture.
+- Use proportionate mobile/desktop preview columns, clearly label viewport previews, and keep direct native-size image links.
+- Add a tall-page regression fixture and assertions for exact screenshot dimensions.
+
 ## 3.1.0 - 2026-10-26
 
 ### Security

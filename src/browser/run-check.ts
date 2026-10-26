@@ -146,6 +146,36 @@ type SharedSession = {
   navigationError?: string;
 };
 
+async function captureViewportScreenshot(page: Page, destination: string): Promise<void> {
+  // Full-page captures on very long sites can exceed practical browser image
+  // dimensions, duplicate fixed content, and leave lazy reveals invisible.
+  // Capture the real viewport and render reduced-motion content for evidence.
+  const previouslyReduced = await page.evaluate(() =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  try {
+    await page.evaluate(async () => {
+      if (document.fonts) {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise<void>((resolve) => window.setTimeout(resolve, 1200)),
+        ]);
+      }
+    });
+    await page.screenshot({
+      path: destination,
+      fullPage: false,
+      animations: "disabled",
+      caret: "hide",
+    });
+  } finally {
+    await page.emulateMedia({
+      reducedMotion: previouslyReduced ? "reduce" : "no-preference",
+    });
+  }
+}
+
 export async function runBrowserChecks(
   options: BrowserRunOptions,
 ): Promise<BrowserCheckResult[]> {
@@ -323,7 +353,7 @@ export async function runBrowserChecks(
           !capturedSnapshots.has(snapshotKey)
         ) {
           try {
-            await page.screenshot({ path: snapshotPath, fullPage: true });
+            await captureViewportScreenshot(page, snapshotPath);
             capturedSnapshots.add(snapshotKey);
             evidence.push({
               type: "screenshot",
@@ -377,7 +407,7 @@ export async function runBrowserChecks(
             : statusForCheck(rawWithoutStatus);
 
         if (status === "failed" && options.screenshotMode !== "none") {
-          await page.screenshot({ path: screenshotPath, fullPage: true });
+          await captureViewportScreenshot(page, screenshotPath);
           evidence.push({
             type: "screenshot",
             localPath: screenshotRel,
@@ -389,7 +419,7 @@ export async function runBrowserChecks(
         pageErrors.push(error instanceof Error ? error.message : String(error));
         if (options.screenshotMode !== "none") {
           try {
-            await page.screenshot({ path: screenshotPath, fullPage: true });
+            await captureViewportScreenshot(page, screenshotPath);
             evidence.push({
               type: "screenshot",
               localPath: screenshotRel,
