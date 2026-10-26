@@ -12,7 +12,9 @@ export function escapeMarkdown(value: string): string {
 export function safeHttpLink(value: string): string | undefined {
   try {
     const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) ? url.toString() : undefined;
+    return ["http:", "https:"].includes(url.protocol)
+      ? url.toString()
+      : undefined;
   } catch {
     return undefined;
   }

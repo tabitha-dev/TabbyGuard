@@ -26,7 +26,9 @@ function findingDetail(finding: Finding): string[] {
     `**Likely cause:** ${escapeMarkdown(finding.suggestedCause)}`,
     "",
     `**Confidence:** ${finding.confidence.level}`,
-    ...finding.confidence.reasons.map((reason) => `- ${escapeMarkdown(reason)}`),
+    ...finding.confidence.reasons.map(
+      (reason) => `- ${escapeMarkdown(reason)}`,
+    ),
     "",
     finding.changedFiles.length
       ? `**Related changes:** ${finding.changedFiles.map((file) => `\`${escapeMarkdown(file)}\``).join(", ")}`

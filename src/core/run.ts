@@ -120,7 +120,10 @@ export async function runTabbyGuard(
       });
       modelUsed = options.model;
     } catch (error) {
-      console.warn("TabbyGuard: assisted planning failed; using deterministic checks.", error instanceof Error ? error.name : "Unknown error");
+      console.warn(
+        "TabbyGuard: assisted planning failed; using deterministic checks.",
+        error instanceof Error ? error.name : "Unknown error",
+      );
       testPlan = fallbackPlan;
     }
   }
@@ -148,7 +151,10 @@ export async function runTabbyGuard(
       });
       modelUsed = options.model;
     } catch (error) {
-      console.warn("TabbyGuard: assisted finding enrichment failed; retaining deterministic findings.", error instanceof Error ? error.name : "Unknown error");
+      console.warn(
+        "TabbyGuard: assisted finding enrichment failed; retaining deterministic findings.",
+        error instanceof Error ? error.name : "Unknown error",
+      );
     }
   }
 

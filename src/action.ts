@@ -29,11 +29,16 @@ export async function runAction(): Promise<void> {
   if (context.kind === "github" && !githubToken) {
     throw new Error("github-token is required for pull request checks");
   }
-  const changedFiles = context.kind === "github"
-    ? await getChangedFiles(getOctokit(githubToken), context)
-    : [];
+  const changedFiles =
+    context.kind === "github"
+      ? await getChangedFiles(getOctokit(githubToken), context)
+      : [];
   if (context.kind === "standalone") {
-    core.info("No pull request on " + (github.context.eventName || "workflow") + " event. Running standalone smoke plan without PR review.");
+    core.info(
+      "No pull request on " +
+        (github.context.eventName || "workflow") +
+        " event. Running standalone smoke plan without PR review.",
+    );
   }
   const artifactDir = path.resolve(readInput("artifact-dir") || ".tabbyguard");
   const mode = readMode();

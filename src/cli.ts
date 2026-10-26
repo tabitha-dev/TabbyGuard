@@ -1,7 +1,11 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { parseArgs } from "node:util";
-import { runTabbyGuard, type ScreenshotMode, type TabbyGuardRunOptions } from "./core/run.js";
+import {
+  runTabbyGuard,
+  type ScreenshotMode,
+  type TabbyGuardRunOptions,
+} from "./core/run.js";
 import type { Severity } from "./schemas/finding.js";
 
 function usage(): string {
@@ -32,7 +36,6 @@ function parseMaxChecks(value: string): number {
   return parsed;
 }
 
-
 function parseTargetUrl(value: string): URL {
   let parsed: URL;
   try {
@@ -48,7 +51,12 @@ function parseTargetUrl(value: string): URL {
 
 export type CliRequest =
   | { kind: "help" }
-  | { kind: "run"; targetUrl: URL; open: boolean; options: Omit<TabbyGuardRunOptions, "openaiApiKey" | "model"> };
+  | {
+      kind: "run";
+      targetUrl: URL;
+      open: boolean;
+      options: Omit<TabbyGuardRunOptions, "openaiApiKey" | "model">;
+    };
 
 export function parseCliArgs(args: string[]): CliRequest {
   let parsed;
@@ -70,17 +78,30 @@ export function parseCliArgs(args: string[]): CliRequest {
       },
     });
   } catch (error) {
-    throw new Error((error instanceof Error ? error.message : String(error)) + "\n\n" + usage());
+    throw new Error(
+      (error instanceof Error ? error.message : String(error)) +
+        "\n\n" +
+        usage(),
+    );
   }
   const { values, positionals } = parsed;
   if (values.help || args.length === 0) return { kind: "help" };
   if (!positionals.length) throw new Error("A URL is required.\n\n" + usage());
-  if (positionals.length !== 1) throw new Error("Expected one URL, got " + positionals.length + ". Use --routes a,b for multiple routes.\n\n" + usage());
+  if (positionals.length !== 1)
+    throw new Error(
+      "Expected one URL, got " +
+        positionals.length +
+        ". Use --routes a,b for multiple routes.\n\n" +
+        usage(),
+    );
   const targetUrl = parseTargetUrl(positionals[0]);
-  const routes = (values.routes || (targetUrl.pathname + targetUrl.search) || "/")
-    .split(",").map((route) => route.trim()).filter(Boolean);
+  const routes = (values.routes || targetUrl.pathname + targetUrl.search || "/")
+    .split(",")
+    .map((route) => route.trim())
+    .filter(Boolean);
   const mode = values.mode || "deterministic";
-  if (mode !== "deterministic" && mode !== "assisted") throw new Error("--mode must be deterministic or assisted");
+  if (mode !== "deterministic" && mode !== "assisted")
+    throw new Error("--mode must be deterministic or assisted");
   return {
     kind: "run",
     targetUrl,
@@ -128,7 +149,9 @@ export async function runCli(args = process.argv.slice(2)): Promise<void> {
   }
   const { targetUrl, options } = request;
   const artifactDir = options.artifactDir;
-  process.stdout.write("\nTabbyGuard\n" + targetUrl.toString() + "\n\nRunning browser checks...\n");
+  process.stdout.write(
+    "\nTabbyGuard\n" + targetUrl.toString() + "\n\nRunning browser checks...\n",
+  );
   const run = await runTabbyGuard({
     ...options,
     openaiApiKey: process.env.OPENAI_API_KEY,

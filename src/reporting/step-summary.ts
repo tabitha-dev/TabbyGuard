@@ -43,7 +43,9 @@ export async function writeStepSummary(
     );
   }
 
-  const safeArtifactUrl = options.artifactUrl ? safeHttpLink(options.artifactUrl) : undefined;
+  const safeArtifactUrl = options.artifactUrl
+    ? safeHttpLink(options.artifactUrl)
+    : undefined;
   if (safeArtifactUrl) {
     lines.push(
       `**[Download the full visual report and evidence](${safeArtifactUrl})**`,

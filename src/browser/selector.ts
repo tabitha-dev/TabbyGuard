@@ -34,10 +34,16 @@ export async function readFocus(page: Page): Promise<FocusState> {
     store.__tabbyguardFocusIds ??= new WeakMap();
     let id = store.__tabbyguardFocusIds.get(el);
     if (id === undefined) {
-      id = store.__tabbyguardNextFocusId = (store.__tabbyguardNextFocusId ?? 0) + 1;
+      id = store.__tabbyguardNextFocusId =
+        (store.__tabbyguardNextFocusId ?? 0) + 1;
       store.__tabbyguardFocusIds.set(el, id);
     }
-    const name = el.getAttribute("aria-label") || (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
-    return { key: String(id), description: tag + (el.id ? "#" + el.id : name ? '("' + name + '")' : "") };
+    const name =
+      el.getAttribute("aria-label") ||
+      (el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
+    return {
+      key: String(id),
+      description: tag + (el.id ? "#" + el.id : name ? '("' + name + '")' : ""),
+    };
   });
 }

@@ -45,7 +45,10 @@ async function firstVisible(
 
 function firstLine(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return message.replace(/\u001b\[[0-9;]*m/g, "").split("\n")[0].trim();
+  return message
+    .replace(/\u001b\[[0-9;]*m/g, "")
+    .split("\n")[0]
+    .trim();
 }
 
 function blockedTarget(
@@ -59,7 +62,12 @@ function blockedTarget(
     kind,
     attempted,
     failures: [],
-    reason: "A visible " + kind + " target could not be operated (" + firstLine(error) + "), so no defect was inferred.",
+    reason:
+      "A visible " +
+      kind +
+      " target could not be operated (" +
+      firstLine(error) +
+      "), so no defect was inferred.",
     focusBefore,
   };
 }
@@ -214,7 +222,10 @@ export async function runInteractionProbe(
       return blockedTarget("form", attempted, focusBefore, error);
     }
     const focusAfter = focusAfterState.description;
-    if (focusAfterState.key === null || focusAfterState.key === focusBeforeState.key) {
+    if (
+      focusAfterState.key === null ||
+      focusAfterState.key === focusBeforeState.key
+    ) {
       failures.push("A visible form control could not receive focus.");
       return {
         status: "failed",

@@ -117,7 +117,11 @@ describe("browser fixtures", () => {
   }, 30_000);
 
   it("treats covered interaction targets as inconclusive", async () => {
-    const { results, findings } = await run("/blocked-interaction", "interaction", "Navigation");
+    const { results, findings } = await run(
+      "/blocked-interaction",
+      "interaction",
+      "Navigation",
+    );
     expect(results[0].status).toBe("inconclusive");
     expect(findings).toHaveLength(0);
   }, 30_000);

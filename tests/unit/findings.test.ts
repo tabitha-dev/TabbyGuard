@@ -50,7 +50,9 @@ describe("evidence-backed findings", () => {
     const result = baseResult();
     result.status = "failed";
     result.item.checkType = "accessibility";
-    result.axeViolations = [{ id: "aria-valid-attr", impact: "critical", nodes: 1 }];
+    result.axeViolations = [
+      { id: "aria-valid-attr", impact: "critical", nodes: 1 },
+    ];
     expect(summarizeDeterministically([result])[0].severity).toBe("critical");
   });
 

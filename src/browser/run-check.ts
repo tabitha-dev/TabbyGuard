@@ -175,7 +175,10 @@ export async function runBrowserChecks(
 
       page.on("console", (message: ConsoleMessage) => {
         const location = message.location()?.url;
-        if ((message.type() === "error" || message.type() === "warning") && (!location || isFirstParty(location, url))) {
+        if (
+          (message.type() === "error" || message.type() === "warning") &&
+          (!location || isFirstParty(location, url))
+        ) {
           consoleMessages.push({
             type: message.type(),
             text: message.text(),
@@ -186,7 +189,8 @@ export async function runBrowserChecks(
       page.on("pageerror", (error: Error) => pageErrors.push(error.message));
       page.on("requestfailed", (request: Request) => {
         if (!isFirstParty(request.url(), url)) return;
-        if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? "")) return;
+        if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
+          return;
         networkFailures.push({
           url: request.url(),
           method: request.method(),
@@ -236,7 +240,13 @@ export async function runBrowserChecks(
         }
 
         if (documentStatus !== undefined && documentStatus >= 400) {
-          notes.push("Route returned HTTP " + documentStatus + "; the " + item.checkType + " probe was not run.");
+          notes.push(
+            "Route returned HTTP " +
+              documentStatus +
+              "; the " +
+              item.checkType +
+              " probe was not run.",
+          );
         } else if (item.checkType === "accessibility") {
           axeViolations = await runA11yScan(page);
           await writeJson(a11yPath, axeViolations);
@@ -265,9 +275,10 @@ export async function runBrowserChecks(
           keyboard,
           notes,
         };
-        status = documentStatus !== undefined && documentStatus >= 400
-          ? "failed"
-          : statusForCheck(rawWithoutStatus);
+        status =
+          documentStatus !== undefined && documentStatus >= 400
+            ? "failed"
+            : statusForCheck(rawWithoutStatus);
 
         if (status === "failed" && options.screenshotMode !== "none") {
           await page.screenshot({ path: screenshotPath, fullPage: true });

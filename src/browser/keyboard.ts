@@ -40,7 +40,10 @@ export async function runKeyboardProbe(
   await page.keyboard.press("Tab");
   states.push(await readFocus(page));
   const sequence = states.map((state) => state.description);
-  const useful = states.slice(1).map((state) => state.key).filter((key): key is string => key !== null);
+  const useful = states
+    .slice(1)
+    .map((state) => state.key)
+    .filter((key): key is string => key !== null);
 
   if (useful.length < 2 || new Set(useful).size < 2) {
     return {

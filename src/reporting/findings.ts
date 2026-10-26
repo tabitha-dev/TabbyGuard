@@ -67,13 +67,21 @@ export function summarizeDeterministically(
         category: "network",
         severity: "high",
         confidence: confidence(result, [
-          "The route's own document response had HTTP status " + result.documentStatus + ".",
+          "The route's own document response had HTTP status " +
+            result.documentStatus +
+            ".",
         ]),
         title,
-        summary: "GET " + result.url + " responded with HTTP " + result.documentStatus + ", so the page under test did not load.",
-        suggestedCause: result.documentStatus >= 500
-          ? "The preview's server or rendering for this route is failing. Inspect server logs for the route."
-          : "The route may be misspelled, removed, renamed, or protected in the preview deployment.",
+        summary:
+          "GET " +
+          result.url +
+          " responded with HTTP " +
+          result.documentStatus +
+          ", so the page under test did not load.",
+        suggestedCause:
+          result.documentStatus >= 500
+            ? "The preview's server or rendering for this route is failing. Inspect server logs for the route."
+            : "The route may be misspelled, removed, renamed, or protected in the preview deployment.",
       });
       continue;
     }

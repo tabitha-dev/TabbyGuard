@@ -10,7 +10,9 @@ export function getOctokit(token: string): GitHubClient {
   return github.getOctokit(token);
 }
 
-export type ActionRunContext = PRContext | (RunContext & { kind: "standalone" });
+export type ActionRunContext =
+  | PRContext
+  | (RunContext & { kind: "standalone" });
 
 export function getCurrentRunContext(previewUrl: string): ActionRunContext {
   const pullRequest = github.context.payload.pull_request;
@@ -26,7 +28,11 @@ export function getCurrentRunContext(previewUrl: string): ActionRunContext {
     serverUrl: process.env.GITHUB_SERVER_URL ?? "https://github.com",
   };
   if (!pullRequest) {
-    return { ...shared, kind: "standalone", commitSha: github.context.sha || undefined };
+    return {
+      ...shared,
+      kind: "standalone",
+      commitSha: github.context.sha || undefined,
+    };
   }
   return {
     ...shared,

@@ -16,7 +16,10 @@ export async function postOrUpdatePrComment(
       per_page: 100,
     });
     const existing = comments.find(
-      (comment: { body?: string | null; user?: { login?: string; type?: string } | null }) =>
+      (comment: {
+        body?: string | null;
+        user?: { login?: string; type?: string } | null;
+      }) =>
         comment.user?.login === "github-actions[bot]" &&
         comment.user?.type === "Bot" &&
         comment.body?.startsWith(marker),
