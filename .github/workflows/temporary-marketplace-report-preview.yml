@@ -25,10 +25,10 @@ jobs:
       - name: Serve intentionally broken fixture
         run: |
           node examples/demo-site/server.mjs 4173 > /tmp/tabbyguard-marketplace-demo.log 2>&1 &
-          curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:4173/overflow > /dev/null
+          curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:4173/marketplace > /dev/null
       - name: Produce real TabbyGuard report
         run: |
-          node dist/index.js http://127.0.0.1:4173/overflow --routes /overflow --fail-on-severity none --screenshot-mode all --artifact-dir .tabbyguard-marketplace
+          node dist/index.js http://127.0.0.1:4173/marketplace --routes /marketplace --fail-on-severity none --screenshot-mode all --artifact-dir .tabbyguard-marketplace
       - name: Capture actual visual report
         shell: bash
         run: |
