@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Northstar design dashboard demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f8f9ff;
+        color: #232453;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      .wrap {
+        width: min(1120px, calc(100% - 32px));
+        margin: auto;
+      }
+      header {
+        height: 74px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .brand {
+        font-size: 21px;
+        letter-spacing: -1px;
+        font-weight: 850;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .brand i {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #7965fa, #2399f7);
+        color: white;
+        font-style: normal;
+      }
+      nav {
+        display: flex;
+        gap: 28px;
+        color: #687093;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      nav b {
+        background: #282960;
+        color: white;
+        border-radius: 12px;
+        padding: 12px 15px;
+      }
+      .hero {
+        background: linear-gradient(110deg, #2f276c, #6152cd 60%, #677ef8);
+        color: white;
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 20px;
+        padding: 45px;
+        border-radius: 26px;
+        min-height: 342px;
+        overflow: hidden;
+      }
+      .eyebrow {
+        display: inline-block;
+        border-radius: 30px;
+        background: #ffffff29;
+        color: #f4efff;
+        padding: 8px 12px;
+        font-size: 10px;
+        letter-spacing: 1px;
+        font-weight: 800;
+      }
+      h1 {
+        font-size: 51px;
+        line-height: 1.03;
+        letter-spacing: -2.5px;
+        margin: 24px 0 13px;
+      }
+      .hero p {
+        font-size: 14px;
+        line-height: 1.7;
+        color: #efecff;
+        margin: 0 0 22px;
+      }
+      .cta {
+        background: white;
+        color: #4033ab;
+        padding: 13px 18px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 850;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .demo {
+        background: white;
+        color: #252454;
+        border-radius: 19px;
+        align-self: center;
+        padding: 19px;
+        box-shadow: 0 20px 40px #21145150;
+        transform: rotate(3deg);
+      }
+      .demohead {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .stars {
+        letter-spacing: 3px;
+        color: #b0b2d6;
+      }
+      .bars {
+        display: flex;
+        align-items: flex-end;
+        height: 115px;
+        gap: 10px;
+        margin: 15px 0;
+      }
+      .bars i {
+        height: var(--height);
+        flex: 1;
+        background: linear-gradient(0deg, #6756fa, #72bdfb);
+        border-radius: 7px 7px 0 0;
+      }
+      .demof {
+        border-top: 1px solid #e7eaf6;
+        display: flex;
+        justify-content: space-between;
+        padding-top: 13px;
+        color: #72779b;
+        font-size: 10px;
+      }
+      .up {
+        color: #079b72;
+        font-weight: 800;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin: 23px 0;
+      }
+      .metric,
+      .panel {
+        border: 1px solid #e8e9fa;
+        border-radius: 17px;
+        background: white;
+        padding: 19px;
+      }
+      .metric label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #747b9a;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .metric strong {
+        font-size: 28px;
+      }
+      .metric small {
+        font-size: 11px;
+        color: #079b72;
+        margin-left: 7px;
+        font-weight: 800;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 9px;
+      }
+      .panel p {
+        font-size: 12px;
+        color: #8186a2;
+        margin: 0 0 18px;
+      }
+      .overflow {
+        width: 520px;
+        max-width: none;
+        padding: 17px;
+        border: 1px solid #dad8f4;
+        border-radius: 12px;
+        background: #f4f3ff;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .tag {
+        border-radius: 25px;
+        padding: 6px 9px;
+        color: #664eb3;
+        background: #e8e1ff;
+        white-space: nowrap;
+        font-size: 10px;
+      }
+      .line {
+        height: 10px;
+        background: #e8eafa;
+        border-radius: 8px;
+        margin: 14px 0;
+      }
+      .line:nth-child(3) {
+        width: 70%;
+      }
+      .line:nth-child(4) {
+        width: 55%;
+      }
+      @media (max-width: 650px) {
+        header {
+          height: 63px;
+        }
+        nav {
+          display: none;
+        }
+        .hero {
+          display: block;
+          border-radius: 19px;
+          padding: 26px 21px;
+        }
+        h1 {
+          font-size: 34px;
+          letter-spacing: -1.5px;
+          margin: 18px 0 12px;
+        }
+        .hero p {
+          font-size: 12px;
+        }
+        .demo {
+          max-width: 260px;
+          transform: none;
+          margin: 23px auto 0;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px;
+          margin: 13px 0;
+        }
+        .metric {
+          padding: 14px;
+        }
+        .metric strong {
+          font-size: 22px;
+        }
+        .metric:last-child {
+          display: none;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        .panel {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand"><i aria-hidden="true">✦</i>northstar.</div>
+        <nav aria-label="Main navigation">
+          <span>Features</span><span>Templates</span><span>Pricing</span
+          ><b>Get started</b>
+        </nav>
+      </header>
+      <main>
+        <section class="hero">
+          <div>
+            <span class="eyebrow">✦ YOUR NEXT BIG IDEA STARTS HERE</span>
+            <h1>Build boldly.<br />Launch beautifully.</h1>
+            <p>
+              Bring an extraordinary digital experience to life with one simple,
+              inspiring workspace for your team.
+            </p>
+            <a class="cta" href="#overview">Explore dashboard ↗</a>
+          </div>
+          <div class="demo" aria-label="Project momentum example">
+            <div class="demohead">
+              Project momentum <span class="stars">•••</span>
+            </div>
+            <div class="bars">
+              <i style="--height: 35%"></i><i style="--height: 58%"></i
+              ><i style="--height: 46%"></i><i style="--height: 75%"></i
+              ><i style="--height: 64%"></i><i style="--height: 89%"></i>
+            </div>
+            <div class="demof">
+              <span>Creative velocity</span><span class="up">+24.8%</span>
+            </div>
+          </div>
+        </section>
+        <section class="metrics" id="overview" aria-label="Key metrics">
+          <div class="metric">
+            <label>Active projects</label><strong>24</strong><small>+12%</small>
+          </div>
+          <div class="metric">
+            <label>Team health</label><strong>98%</strong><small>+4%</small>
+          </div>
+          <div class="metric">
+            <label>Tasks completed</label><strong>1,286</strong
+            ><small>+18%</small>
+          </div>
+        </section>
+        <section class="grid">
+          <div class="panel">
+            <h2>Project overview</h2>
+            <p>A little more clarity, a lot more progress.</p>
+            <div class="overflow">
+              <span>Mobile-first product experience</span
+              ><span class="tag">In progress</span>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>What's next</h2>
+            <p>Momentum is built one step at a time.</p>
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
