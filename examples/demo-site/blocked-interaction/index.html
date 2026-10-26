@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blocked interaction fixture</title>
+    <style>
+      body { font-family: system-ui; margin: 2rem; }
+      .consent {
+        position: fixed; inset: 0; background: rgba(0,0,0,.6); color: #fff;
+        display: flex; align-items: flex-end; padding: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header><button type="button" aria-label="Open menu" aria-expanded="false">Menu</button></header>
+    <main><h1>Blocked interaction fixture</h1><p>An overlay covers the menu trigger.</p></main>
+    <div class="consent" role="region" aria-label="Cookie consent">
+      <p>This overlay intercepts pointer events.</p>
+    </div>
+  </body>
+</html>

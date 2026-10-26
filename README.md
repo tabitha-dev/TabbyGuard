@@ -58,6 +58,10 @@ jobs:
 
 The action uploads a `tabbyguard-evidence-*` artifact. Download it and open `report.html` for the full visual report.
 
+### Run on deployment events
+
+TabbyGuard can now run outside PRs (deployment_status, push, workflow_dispatch, schedule). In those workflows, provide a preview-url and routes. No github-token is required for standalone checks, and no PR comment is attempted.
+
 ### Read the result in later steps
 
 ```yaml
