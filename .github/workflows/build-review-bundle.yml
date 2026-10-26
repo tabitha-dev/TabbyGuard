@@ -1,0 +1,45 @@
+name: Build review branch bundle
+on:
+  push:
+    branches:
+      - review/v3.0.1-quality-hardening-20261026
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "examples/**"
+      - ".github/workflows/build-review-bundle.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.repository == 'tabitha-dev/TabbyGuard' && github.ref == 'refs/heads/review/v3.0.1-quality-hardening-20261026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout review branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Format changed sources
+        run: npm run format
+      - name: Verify tests, types and bundle
+        run: npm run verify
+      - name: Commit verified bundle to review branch
+        shell: bash
+        run: |
+          if ! git diff --quiet -- .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add dist src tests examples README.md CHANGELOG.md
+            git diff --cached --quiet || git commit -m "Build and format reviewed TabbyGuard changes"
+            git push origin HEAD:review/v3.0.1-quality-hardening-20261026
+          fi
