@@ -20,6 +20,8 @@ jobs:
         with:
           node-version: "24"
           cache: npm
+      - name: Resolve patched dependency lockfile
+        run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - run: npm run format
       - run: npm run verify
@@ -28,10 +30,10 @@ jobs:
       - name: Commit formatted release package check script
         shell: bash
         run: |
-          if ! git diff --quiet -- scripts/check-package.mjs; then
+          if ! git diff --quiet -- scripts/check-package.mjs package-lock.json; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add scripts/check-package.mjs
-            git commit -m "Format v3.1.0 npm package inspection"
+            git add scripts/check-package.mjs package-lock.json
+            git commit -m "Lock vetted patched dependencies and format release checks"
             git push origin HEAD:release/v3.1.0-readiness-20261026
           fi
