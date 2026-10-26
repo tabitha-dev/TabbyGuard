@@ -214,13 +214,14 @@ export async function runBrowserChecks(
       let documentStatus: number | undefined;
       let status: CheckStatus = "inconclusive";
 
-      await context.tracing.start({
-        screenshots: true,
-        snapshots: true,
-        sources: true,
-      });
+      if (!existingSession) {
+        await context.tracing.start({
+          screenshots: true,
+          snapshots: true,
+          sources: true,
+        });
 
-      page.on("console", (message: ConsoleMessage) => {
+        page.on("console", (message: ConsoleMessage) => {
         const location = message.location()?.url;
         if (
           (message.type() === "error" || message.type() === "warning") &&
@@ -254,19 +255,39 @@ export async function runBrowserChecks(
           status: response.status(),
         });
       });
+      }
 
       try {
-        const response = await page.goto(url, {
-          waitUntil: "domcontentloaded",
-          timeout: 30_000,
-        });
-        documentStatus = response?.status();
-        try {
-          await page.waitForLoadState("networkidle", { timeout: 4_000 });
-        } catch {
-          notes.push(
-            "Network did not become idle within 4 seconds; checks continued.",
-          );
+        if (!existingSession) {
+          try {
+            const response = await page.goto(url, {
+              waitUntil: "domcontentloaded",
+              timeout: 30_000,
+            });
+            documentStatus = response?.status();
+          } catch (error) {
+            if (session) {
+              session.navigationError = error instanceof Error ? error.message : String(error);
+            }
+            throw error;
+          }
+          try {
+            await page.waitForLoadState("networkidle", { timeout: 4_000 });
+          } catch {
+            notes.push("Network did not become idle within 4 seconds; checks continued.");
+          }
+          if (session) {
+            session.documentStatus = documentStatus;
+            session.messages = [...consoleMessages];
+            session.errors = [...pageErrors];
+            session.failures = [...networkFailures];
+            session.notes = [...notes];
+          }
+        } else {
+          documentStatus = existingSession.documentStatus;
+          if (existingSession.navigationError) {
+            throw new Error(existingSession.navigationError);
+          }
         }
 
         if (
