@@ -120,7 +120,7 @@ The report includes:
 - Overall `PASS`, `WARN`, or `FAIL` outcome
 - Tested URL, mode, duration, commit/PR context when available
 - Critical / high / medium / low counters
-- Representative **mobile and desktop visual snapshots** captured once per route and viewport
+- Representative **mobile and desktop viewport snapshots** captured once per route and viewport
 - Filterable finding cards
 - Route, viewport, category, severity, and confidence
 - Likely cause and related changed files
@@ -181,12 +181,12 @@ With the default:
 screenshot-mode: all
 ```
 
-TabbyGuard captures one representative page snapshot per route/viewport and additional screenshots for failed checks.
+TabbyGuard captures one representative **visible viewport** snapshot per route/viewport and additional viewport screenshots for failed checks. Captures temporarily request reduced motion and disable animations so scroll-revealed content is visible, without leaving the rest of the test in reduced-motion mode. This avoids very tall, blank, or repeated full-page screenshots, and keeps the image dimensions tied to the selected browser viewport. Click a preview to inspect the native-size PNG.
 
 Other modes:
 
 ```text
-all       representative visual snapshots + failure screenshots
+all       representative viewport snapshots + failure screenshots
 failures  failure screenshots only
 none      no PNG screenshots
 ```
