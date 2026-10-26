@@ -3,6 +3,8 @@ import path from "node:path";
 import {
   chromium,
   type Browser,
+  type BrowserContext,
+  type Page,
   type ConsoleMessage,
   type Request,
   type Response,
@@ -125,6 +127,25 @@ function posixPath(...parts: string[]): string {
   return path.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
 }
 
+// Layout, runtime, and network checks do not intentionally change page state.
+// Axe injects scripts; keyboard and interaction probes manipulate the page.
+// Keep those probes isolated in fresh browser contexts.
+const PASSIVE_CHECKS = new Set(["layout", "runtime", "network"]);
+
+type SharedSession = {
+  context: BrowserContext;
+  page: Page;
+  traceRel: string;
+  remaining: number;
+  evidences: BrowserCheckResult["evidence"][];
+  messages: ConsoleRecord[];
+  errors: string[];
+  failures: NetworkFailure[];
+  notes: string[];
+  documentStatus?: number;
+  navigationError?: string;
+};
+
 export async function runBrowserChecks(
   options: BrowserRunOptions,
 ): Promise<BrowserCheckResult[]> {
@@ -132,6 +153,18 @@ export async function runBrowserChecks(
   const browser = await launchBrowser(options.browserChannel);
   const results: BrowserCheckResult[] = [];
   const capturedSnapshots = new Set<string>();
+  const sessionCounts = new Map<string, number>();
+  const sessionKey = (item: BrowserRunOptions["testPlan"][number]): string =>
+    JSON.stringify([
+      resolveTargetUrl(options.previewUrl, item.route),
+      item.viewport,
+    ]);
+  for (const item of options.testPlan) {
+    if (!PASSIVE_CHECKS.has(item.checkType)) continue;
+    const key = sessionKey(item);
+    sessionCounts.set(key, (sessionCounts.get(key) ?? 0) + 1);
+  }
+  const sharedSessions = new Map<string, SharedSession>();
 
   try {
     for (const item of options.testPlan) {
@@ -139,7 +172,15 @@ export async function runBrowserChecks(
       const url = resolveTargetUrl(options.previewUrl, item.route);
       const size = viewportSize(item.viewport);
       const slug = slugify(`${item.id}-${item.viewport}-${item.checkType}`);
-      const traceRel = posixPath("traces", `${slug}.zip`);
+      const key = sessionKey(item);
+      const isShared =
+        PASSIVE_CHECKS.has(item.checkType) && (sessionCounts.get(key) ?? 0) > 1;
+      const existingSession = isShared ? sharedSessions.get(key) : undefined;
+      const traceRel =
+        existingSession?.traceRel ??
+        (isShared
+          ? posixPath("traces", slugify("shared-" + key) + ".zip")
+          : posixPath("traces", slug + ".zip"));
       const screenshotRel = posixPath("screenshots", `${slug}.png`);
       const logRel = posixPath("logs", `${slug}.json`);
       const a11yRel = posixPath("a11y", `${slug}.json`);
@@ -153,13 +194,35 @@ export async function runBrowserChecks(
       const logPath = path.join(options.artifactDir, logRel);
       const a11yPath = path.join(options.artifactDir, a11yRel);
       const snapshotPath = path.join(options.artifactDir, snapshotRel);
-      const consoleMessages: ConsoleRecord[] = [];
-      const pageErrors: string[] = [];
-      const networkFailures: NetworkFailure[] = [];
-      const notes: string[] = [];
+      const consoleMessages: ConsoleRecord[] = existingSession
+        ? [...existingSession.messages]
+        : [];
+      const pageErrors: string[] = existingSession
+        ? [...existingSession.errors]
+        : [];
+      const networkFailures: NetworkFailure[] = existingSession
+        ? [...existingSession.failures]
+        : [];
+      const notes: string[] = existingSession ? [...existingSession.notes] : [];
       const evidence: BrowserCheckResult["evidence"] = [];
-      const context = await browser.newContext({ viewport: size });
-      const page = await context.newPage();
+      const context =
+        existingSession?.context ??
+        (await browser.newContext({ viewport: size }));
+      const page = existingSession?.page ?? (await context.newPage());
+      const session: SharedSession | undefined = !isShared
+        ? undefined
+        : (existingSession ?? {
+            context,
+            page,
+            traceRel,
+            remaining: sessionCounts.get(key) ?? 1,
+            evidences: [],
+            messages: consoleMessages,
+            errors: pageErrors,
+            failures: networkFailures,
+            notes,
+          });
+      if (session && !existingSession) sharedSessions.set(key, session);
       let axeViolations: BrowserCheckResult["axeViolations"] = [];
       let layout: BrowserCheckResult["layout"];
       let interaction: BrowserCheckResult["interaction"];
@@ -167,59 +230,92 @@ export async function runBrowserChecks(
       let documentStatus: number | undefined;
       let status: CheckStatus = "inconclusive";
 
-      await context.tracing.start({
-        screenshots: true,
-        snapshots: true,
-        sources: true,
-      });
+      if (!existingSession) {
+        await context.tracing.start({
+          screenshots: true,
+          snapshots: true,
+          sources: true,
+        });
 
-      page.on("console", (message: ConsoleMessage) => {
-        const location = message.location()?.url;
-        if (
-          (message.type() === "error" || message.type() === "warning") &&
-          (!location || isFirstParty(location, url))
-        ) {
-          consoleMessages.push({
-            type: message.type(),
-            text: message.text(),
-            location: message.location()?.url,
+        page.on("console", (message: ConsoleMessage) => {
+          const location = message.location()?.url;
+          // Chromium may request /favicon.ico automatically. A missing icon is
+          // not a JavaScript runtime exception and must not fail the runtime probe.
+          if (
+            message.type() === "error" &&
+            location &&
+            /\/favicon\.ico(?:\?|$)/i.test(location) &&
+            /status of 404/i.test(message.text())
+          )
+            return;
+          if (
+            (message.type() === "error" || message.type() === "warning") &&
+            (!location || isFirstParty(location, url))
+          ) {
+            consoleMessages.push({
+              type: message.type(),
+              text: message.text(),
+              location: message.location()?.url,
+            });
+          }
+        });
+        page.on("pageerror", (error: Error) => pageErrors.push(error.message));
+        page.on("requestfailed", (request: Request) => {
+          if (!isFirstParty(request.url(), url)) return;
+          if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
+            return;
+          networkFailures.push({
+            url: request.url(),
+            method: request.method(),
+            failureText: request.failure()?.errorText,
           });
-        }
-      });
-      page.on("pageerror", (error: Error) => pageErrors.push(error.message));
-      page.on("requestfailed", (request: Request) => {
-        if (!isFirstParty(request.url(), url)) return;
-        if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
-          return;
-        networkFailures.push({
-          url: request.url(),
-          method: request.method(),
-          failureText: request.failure()?.errorText,
         });
-      });
-      page.on("response", (response: Response) => {
-        if (response.status() < 500 || !isFirstParty(response.url(), url)) {
-          return;
-        }
-        networkFailures.push({
-          url: response.url(),
-          method: response.request().method(),
-          status: response.status(),
+        page.on("response", (response: Response) => {
+          if (response.status() < 500 || !isFirstParty(response.url(), url)) {
+            return;
+          }
+          networkFailures.push({
+            url: response.url(),
+            method: response.request().method(),
+            status: response.status(),
+          });
         });
-      });
+      }
 
       try {
-        const response = await page.goto(url, {
-          waitUntil: "domcontentloaded",
-          timeout: 30_000,
-        });
-        documentStatus = response?.status();
-        try {
-          await page.waitForLoadState("networkidle", { timeout: 4_000 });
-        } catch {
-          notes.push(
-            "Network did not become idle within 4 seconds; checks continued.",
-          );
+        if (!existingSession) {
+          try {
+            const response = await page.goto(url, {
+              waitUntil: "domcontentloaded",
+              timeout: 30_000,
+            });
+            documentStatus = response?.status();
+          } catch (error) {
+            if (session) {
+              session.navigationError =
+                error instanceof Error ? error.message : String(error);
+            }
+            throw error;
+          }
+          try {
+            await page.waitForLoadState("networkidle", { timeout: 4_000 });
+          } catch {
+            notes.push(
+              "Network did not become idle within 4 seconds; checks continued.",
+            );
+          }
+          if (session) {
+            session.documentStatus = documentStatus;
+            session.messages = [...consoleMessages];
+            session.errors = [...pageErrors];
+            session.failures = [...networkFailures];
+            session.notes = [...notes];
+          }
+        } else {
+          documentStatus = existingSession.documentStatus;
+          if (existingSession.navigationError) {
+            throw new Error(existingSession.navigationError);
+          }
         }
 
         if (
@@ -304,12 +400,33 @@ export async function runBrowserChecks(
           }
         }
       } finally {
-        await context.tracing.stop({ path: tracePath }).catch(() => undefined);
-        evidence.push({
-          type: "trace",
-          localPath: traceRel,
-          note: "Playwright trace",
-        });
+        if (session) {
+          session.evidences.push(evidence);
+          session.remaining--;
+          if (session.remaining === 0) {
+            try {
+              await context.tracing.stop({ path: tracePath });
+              for (const individualEvidence of session.evidences) {
+                individualEvidence.push({
+                  type: "trace",
+                  localPath: traceRel,
+                  note: "Shared Playwright trace for read-only checks",
+                });
+              }
+            } catch {
+              notes.push("Shared Playwright trace could not be captured.");
+            }
+          }
+        } else {
+          await context.tracing
+            .stop({ path: tracePath })
+            .catch(() => undefined);
+          evidence.push({
+            type: "trace",
+            localPath: traceRel,
+            note: "Playwright trace",
+          });
+        }
 
         const raw = {
           item,
@@ -331,7 +448,10 @@ export async function runBrowserChecks(
           localPath: logRel,
           note: "Raw browser check log",
         });
-        await context.close().catch(() => undefined);
+        if (!session || session.remaining === 0) {
+          await context.close().catch(() => undefined);
+          if (session) sharedSessions.delete(key);
+        }
       }
 
       results.push({
@@ -340,9 +460,9 @@ export async function runBrowserChecks(
         status,
         durationMs: Date.now() - started,
         documentStatus,
-        consoleMessages,
-        pageErrors,
-        networkFailures,
+        consoleMessages: [...consoleMessages],
+        pageErrors: [...pageErrors],
+        networkFailures: [...networkFailures],
         axeViolations,
         layout,
         interaction,
@@ -352,6 +472,9 @@ export async function runBrowserChecks(
       });
     }
   } finally {
+    for (const session of sharedSessions.values()) {
+      await session.context.close().catch(() => undefined);
+    }
     await browser.close().catch(() => undefined);
   }
 

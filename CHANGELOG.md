@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Performance
+
+- Reuse one browser navigation for multiple layout, runtime, and network checks on the same route and viewport.
+- Keep accessibility, keyboard, and interaction probes in fresh isolated browser contexts.
+- Preserve check-specific logs, failure screenshots, and a complete shared navigation/inspection trace.
+- Add browser integration regression tests for navigation counts, trace evidence, error propagation, and HTTP errors.
+
 ### Improved in next update
 
 - Check planning covers requested routes and distinct risk rules before exhausting the available check budget.

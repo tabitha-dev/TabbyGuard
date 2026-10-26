@@ -231189,18 +231189,40 @@ function statusForCheck(result) {
 function posixPath(...parts) {
     return node_path_1.default.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
 }
+// Layout, runtime, and network checks do not intentionally change page state.
+// Axe injects scripts; keyboard and interaction probes manipulate the page.
+// Keep those probes isolated in fresh browser contexts.
+const PASSIVE_CHECKS = new Set(["layout", "runtime", "network"]);
 async function runBrowserChecks(options) {
     await ensureRunnerDirs(options.artifactDir);
     const browser = await launchBrowser(options.browserChannel);
     const results = [];
     const capturedSnapshots = new Set();
+    const sessionCounts = new Map();
+    const sessionKey = (item) => JSON.stringify([
+        (0, url_js_1.resolveTargetUrl)(options.previewUrl, item.route),
+        item.viewport,
+    ]);
+    for (const item of options.testPlan) {
+        if (!PASSIVE_CHECKS.has(item.checkType))
+            continue;
+        const key = sessionKey(item);
+        sessionCounts.set(key, (sessionCounts.get(key) ?? 0) + 1);
+    }
+    const sharedSessions = new Map();
     try {
         for (const item of options.testPlan) {
             const started = Date.now();
             const url = (0, url_js_1.resolveTargetUrl)(options.previewUrl, item.route);
             const size = (0, test_plan_js_1.viewportSize)(item.viewport);
             const slug = (0, fs_js_1.slugify)(`${item.id}-${item.viewport}-${item.checkType}`);
-            const traceRel = posixPath("traces", `${slug}.zip`);
+            const key = sessionKey(item);
+            const isShared = PASSIVE_CHECKS.has(item.checkType) && (sessionCounts.get(key) ?? 0) > 1;
+            const existingSession = isShared ? sharedSessions.get(key) : undefined;
+            const traceRel = existingSession?.traceRel ??
+                (isShared
+                    ? posixPath("traces", (0, fs_js_1.slugify)("shared-" + key) + ".zip")
+                    : posixPath("traces", slug + ".zip"));
             const screenshotRel = posixPath("screenshots", `${slug}.png`);
             const logRel = posixPath("logs", `${slug}.json`);
             const a11yRel = posixPath("a11y", `${slug}.json`);
@@ -231211,68 +231233,123 @@ async function runBrowserChecks(options) {
             const logPath = node_path_1.default.join(options.artifactDir, logRel);
             const a11yPath = node_path_1.default.join(options.artifactDir, a11yRel);
             const snapshotPath = node_path_1.default.join(options.artifactDir, snapshotRel);
-            const consoleMessages = [];
-            const pageErrors = [];
-            const networkFailures = [];
-            const notes = [];
+            const consoleMessages = existingSession
+                ? [...existingSession.messages]
+                : [];
+            const pageErrors = existingSession
+                ? [...existingSession.errors]
+                : [];
+            const networkFailures = existingSession
+                ? [...existingSession.failures]
+                : [];
+            const notes = existingSession ? [...existingSession.notes] : [];
             const evidence = [];
-            const context = await browser.newContext({ viewport: size });
-            const page = await context.newPage();
+            const context = existingSession?.context ??
+                (await browser.newContext({ viewport: size }));
+            const page = existingSession?.page ?? (await context.newPage());
+            const session = !isShared
+                ? undefined
+                : (existingSession ?? {
+                    context,
+                    page,
+                    traceRel,
+                    remaining: sessionCounts.get(key) ?? 1,
+                    evidences: [],
+                    messages: consoleMessages,
+                    errors: pageErrors,
+                    failures: networkFailures,
+                    notes,
+                });
+            if (session && !existingSession)
+                sharedSessions.set(key, session);
             let axeViolations = [];
             let layout;
             let interaction;
             let keyboard;
             let documentStatus;
             let status = "inconclusive";
-            await context.tracing.start({
-                screenshots: true,
-                snapshots: true,
-                sources: true,
-            });
-            page.on("console", (message) => {
-                const location = message.location()?.url;
-                if ((message.type() === "error" || message.type() === "warning") &&
-                    (!location || isFirstParty(location, url))) {
-                    consoleMessages.push({
-                        type: message.type(),
-                        text: message.text(),
-                        location: message.location()?.url,
+            if (!existingSession) {
+                await context.tracing.start({
+                    screenshots: true,
+                    snapshots: true,
+                    sources: true,
+                });
+                page.on("console", (message) => {
+                    const location = message.location()?.url;
+                    // Chromium may request /favicon.ico automatically. A missing icon is
+                    // not a JavaScript runtime exception and must not fail the runtime probe.
+                    if (message.type() === "error" &&
+                        location &&
+                        /\/favicon\.ico(?:\?|$)/i.test(location) &&
+                        /status of 404/i.test(message.text()))
+                        return;
+                    if ((message.type() === "error" || message.type() === "warning") &&
+                        (!location || isFirstParty(location, url))) {
+                        consoleMessages.push({
+                            type: message.type(),
+                            text: message.text(),
+                            location: message.location()?.url,
+                        });
+                    }
+                });
+                page.on("pageerror", (error) => pageErrors.push(error.message));
+                page.on("requestfailed", (request) => {
+                    if (!isFirstParty(request.url(), url))
+                        return;
+                    if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
+                        return;
+                    networkFailures.push({
+                        url: request.url(),
+                        method: request.method(),
+                        failureText: request.failure()?.errorText,
                     });
-                }
-            });
-            page.on("pageerror", (error) => pageErrors.push(error.message));
-            page.on("requestfailed", (request) => {
-                if (!isFirstParty(request.url(), url))
-                    return;
-                if (/net::ERR_ABORTED/i.test(request.failure()?.errorText ?? ""))
-                    return;
-                networkFailures.push({
-                    url: request.url(),
-                    method: request.method(),
-                    failureText: request.failure()?.errorText,
                 });
-            });
-            page.on("response", (response) => {
-                if (response.status() < 500 || !isFirstParty(response.url(), url)) {
-                    return;
-                }
-                networkFailures.push({
-                    url: response.url(),
-                    method: response.request().method(),
-                    status: response.status(),
+                page.on("response", (response) => {
+                    if (response.status() < 500 || !isFirstParty(response.url(), url)) {
+                        return;
+                    }
+                    networkFailures.push({
+                        url: response.url(),
+                        method: response.request().method(),
+                        status: response.status(),
+                    });
                 });
-            });
+            }
             try {
-                const response = await page.goto(url, {
-                    waitUntil: "domcontentloaded",
-                    timeout: 30_000,
-                });
-                documentStatus = response?.status();
-                try {
-                    await page.waitForLoadState("networkidle", { timeout: 4_000 });
+                if (!existingSession) {
+                    try {
+                        const response = await page.goto(url, {
+                            waitUntil: "domcontentloaded",
+                            timeout: 30_000,
+                        });
+                        documentStatus = response?.status();
+                    }
+                    catch (error) {
+                        if (session) {
+                            session.navigationError =
+                                error instanceof Error ? error.message : String(error);
+                        }
+                        throw error;
+                    }
+                    try {
+                        await page.waitForLoadState("networkidle", { timeout: 4_000 });
+                    }
+                    catch {
+                        notes.push("Network did not become idle within 4 seconds; checks continued.");
+                    }
+                    if (session) {
+                        session.documentStatus = documentStatus;
+                        session.messages = [...consoleMessages];
+                        session.errors = [...pageErrors];
+                        session.failures = [...networkFailures];
+                        session.notes = [...notes];
+                    }
                 }
-                catch {
-                    notes.push("Network did not become idle within 4 seconds; checks continued.");
+                else {
+                    documentStatus = existingSession.documentStatus;
+                    if (existingSession.navigationError) {
+                        throw new Error(existingSession.navigationError);
+                    }
                 }
                 if (options.screenshotMode === "all" &&
                     !capturedSnapshots.has(snapshotKey)) {
@@ -231357,12 +231434,35 @@ async function runBrowserChecks(options) {
                 }
             }
             finally {
-                await context.tracing.stop({ path: tracePath }).catch(() => undefined);
-                evidence.push({
-                    type: "trace",
-                    localPath: traceRel,
-                    note: "Playwright trace",
-                });
+                if (session) {
+                    session.evidences.push(evidence);
+                    session.remaining--;
+                    if (session.remaining === 0) {
+                        try {
+                            await context.tracing.stop({ path: tracePath });
+                            for (const individualEvidence of session.evidences) {
+                                individualEvidence.push({
+                                    type: "trace",
+                                    localPath: traceRel,
+                                    note: "Shared Playwright trace for read-only checks",
+                                });
+                            }
+                        }
+                        catch {
+                            notes.push("Shared Playwright trace could not be captured.");
+                        }
+                    }
+                }
+                else {
+                    await context.tracing
+                        .stop({ path: tracePath })
+                        .catch(() => undefined);
+                    evidence.push({
+                        type: "trace",
+                        localPath: traceRel,
+                        note: "Playwright trace",
+                    });
+                }
                 const raw = {
                     item,
                     url,
@@ -231383,7 +231483,11 @@ async function runBrowserChecks(options) {
                     localPath: logRel,
                     note: "Raw browser check log",
                 });
-                await context.close().catch(() => undefined);
+                if (!session || session.remaining === 0) {
+                    await context.close().catch(() => undefined);
+                    if (session)
+                        sharedSessions.delete(key);
+                }
             }
             results.push({
                 item,
@@ -231391,9 +231495,9 @@ async function runBrowserChecks(options) {
                 status,
                 durationMs: Date.now() - started,
                 documentStatus,
-                consoleMessages,
-                pageErrors,
-                networkFailures,
+                consoleMessages: [...consoleMessages],
+                pageErrors: [...pageErrors],
+                networkFailures: [...networkFailures],
                 axeViolations,
                 layout,
                 interaction,
@@ -231404,6 +231508,9 @@ async function runBrowserChecks(options) {
         }
     }
     finally {
+        for (const session of sharedSessions.values()) {
+            await session.context.close().catch(() => undefined);
+        }
         await browser.close().catch(() => undefined);
     }
     return results;

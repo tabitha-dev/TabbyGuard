@@ -30,6 +30,8 @@ PR context + changed files       URL + routes
 
 `src/core/run.ts` owns planning, browser execution, deterministic finding generation, optional assisted enrichment, result calculation, and artifact generation.
 
+`src/browser/run-check.ts` can reuse a single context and page across read-only layout, runtime, and network probes with identical route/viewport. It retains separate check results and logs but attaches one session-level trace containing the navigation and observations. Accessibility injection, keyboard focus, and interactive probes continue in separate, fresh contexts.
+
 The risk mapper recognizes complete filename tokens and **added** diff lines. A bounded coverage-aware planner reserves one check per requested route (when the budget allows), spreads checks across matched risk-rule categories, and uses remaining slots for deeper checks.
 
 It has no requirement for a GitHub pull-request event. This is what allows the CLI and GitHub Action to share behavior.
