@@ -2,112 +2,102 @@
 
 # TabbyGuard
 
-**Evidence-driven frontend QA with a visual report developers can actually use.**
+**Catch reproducible frontend problems before your users do.**
 
-TabbyGuard tests a deployed frontend in a real browser, turns only reproduced failures into findings, and produces a clean GitHub-native summary plus a self-contained HTML report with screenshots, check coverage, logs, accessibility output, and Playwright traces.
+Run targeted browser QA against a deployed website. Get a clear GitHub Actions summary, actionable findings, and an HTML visual report backed by screenshots, logs, accessibility results, and Playwright traces.
+
+**No evidence, no finding.** Works as a [GitHub Action](#try-it-in-github-actions) or an [npm CLI](#run-it-locally-with-npm). AI is optional.
+
+[GitHub Marketplace](https://github.com/marketplace/actions/tabbyguard) · [npm](https://www.npmjs.com/package/tabbyguard) · [Configuration](#inputs) · [Testing](docs/testing.md)
 
 </div>
 
 ---
 
-## What V3 changes
+## See what you get
 
-TabbyGuard V3 keeps the deterministic browser evidence from V2 and makes the product much easier to understand.
+![TabbyGuard example visual report, showing a reproduced overflow finding, severity counts, and mobile and desktop viewport snapshots](docs/images/report-preview.png)
 
-A run now produces three layers of reporting:
+*Actual TabbyGuard report from the repository's intentionally broken demo fixture. No mock dashboard or stock imagery.*
 
-1. **GitHub Actions summary** — outcome, severity counts, findings, and a direct artifact link.
-2. **Pull request review** — a concise developer-facing explanation of what failed and why.
-3. **`report.html`** — a responsive visual QA report with route/viewport snapshots, detailed finding cards, check coverage, and evidence links.
+| Your question | TabbyGuard shows you |
+| --- | --- |
+| Did the browser encounter a real issue? | Reproducible findings, check statuses, and severity counts |
+| What happened on mobile and desktop? | Viewport-size visual snapshots and failure screenshots |
+| Where can I debug it? | Browser logs, Axe JSON, and Playwright traces |
+| How do I share the result? | A downloadable GitHub Actions artifact with `report.html` and evidence |
 
-The same QA engine also supports a standalone CLI, so GitHub pull-request context is no longer a requirement for testing a URL.
+**Checks include:** runtime exceptions, first-party network failures, automated accessibility violations, horizontal overflow, keyboard focus progression, and safe interaction probes. Checks that cannot be safely completed are recorded as skipped or inconclusive rather than invented defects.
 
-The core rule remains:
+## Try it in GitHub Actions
 
-> **No evidence, no finding.**
-
----
-
-## GitHub Action quick start
-
-Run TabbyGuard after a preview deployment is available:
+Add `.github/workflows/frontend-qa.yml` to your repository:
 
 ```yaml
 name: Frontend QA
 
 on:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: "Publicly reachable URL to test (https://...)"
+        required: true
+        type: string
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  tabbyguard:
+  browser-qa:
     runs-on: ubuntu-latest
     steps:
       - name: Run TabbyGuard
         id: tabbyguard
         uses: tabitha-dev/TabbyGuard@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          preview-url: ${{ env.PREVIEW_URL }}
-          routes: /,/pricing,/checkout
+          preview-url: ${{ inputs.preview_url }}
+          routes: /
+          screenshot-mode: all
           fail-on-severity: high
 ```
 
-The action uploads a `tabbyguard-evidence-*` artifact. Download it and open `report.html` for the full visual report.
+Then open **Actions → Frontend QA → Run workflow**, enter the URL of your deployed site, and run it. No API key or GitHub token input is required for this standalone workflow.
 
-### Run on deployment events
+**Where are the results?** Open the workflow run to see the QA summary and download its **tabbyguard-evidence** artifact. Unzip the artifact and open `report.html` for the visual review. The artifact also contains JSON and supporting evidence.
 
-TabbyGuard can now run outside PRs (deployment_status, push, workflow_dispatch, schedule). In those workflows, provide a preview-url and routes. No github-token is required for standalone checks, and no PR comment is attempted.
+### Add pull-request reviews
 
-### Read the result in later steps
+If you want TabbyGuard to comment on pull requests, run it **after** your preview deployment is ready. In the PR workflow, give the job `pull-requests: write` permission and pass these inputs:
 
 ```yaml
-- name: Show TabbyGuard result
-  run: |
-    echo "Result: ${{ steps.tabbyguard.outputs.result }}"
-    echo "Findings: ${{ steps.tabbyguard.outputs.findings-count }}"
-    echo "Visual report: ${{ steps.tabbyguard.outputs.artifact-url }}"
+# Inside a job triggered by pull_request, after preview deployment:
+permissions:
+  contents: read
+  pull-requests: write
+
+# Inside the TabbyGuard step's "with:" block:
+with:
+  github-token: ${{ secrets.GITHUB_TOKEN }}
+  preview-url: https://preview.example.com # Replace with your real deployed preview URL
+  routes: /,/pricing
+  fail-on-severity: high
 ```
 
----
+TabbyGuard can then summarize failures in the PR and link its evidence artifact. On forked PRs, GitHub may restrict comment permissions; evidence and the Actions summary remain available.
 
-## Standalone CLI
+## Run it locally with npm
 
-The V3 package includes a standalone `tabbyguard` binary.
+With Node.js 20+ and Chrome/Chromium installed:
 
 ```bash
-npx tabbyguard https://example.com
+npx --yes tabbyguard@3.1.1 https://example.com --screenshot-mode all --open
 ```
 
-Useful options:
+Replace `https://example.com` with your website URL. TabbyGuard creates `.tabbyguard/report.html`, `run_summary.json`, viewport snapshots, logs, accessibility files, and traces. `--open` opens the report where supported.
 
-```bash
-npx tabbyguard https://example.com \
-  --routes /,/pricing \
-  --fail-on-severity high \
-  --screenshot-mode all \
-  --open
-```
+**Windows PowerShell:** if script execution is restricted, run `npx.cmd` instead of `npx`.
 
-The CLI writes:
-
-```text
-.tabbyguard/
-├── report.html
-├── run_summary.json
-├── snapshots/
-├── screenshots/
-├── traces/
-├── logs/
-└── a11y/
-```
-
-`--open` opens the generated report after the run when the operating system provides a normal file opener.
-
-> TabbyGuard is available both as a GitHub Action and on npm. This repository's release workflow publishes the verified package and updates the GitHub version tags.
+**Interpret the outcome:** `PASS` means no evidence-backed findings were found **in the checks performed**. `WARN` reports findings below the configured failure threshold; `FAIL` means the threshold was met. TabbyGuard is targeted browser QA, not a substitute for full accessibility auditing or end-to-end coverage.
 
 ---
 
