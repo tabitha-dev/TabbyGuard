@@ -8,6 +8,36 @@ const file = (filename: string, patch = "") => ({
   deletions: 1,
   changes: 4,
   patch,
+});
+
+describe("risk mapper", () => {
+  it("targets navigation changes instead of unrelated checks", () => {
+    const plan = createDeterministicPlan(
+      [file("src/components/Header.tsx", "+ <button aria-expanded>")],
+      ["/"],
+      16,
+    );
+    expect(plan.some((item) => item.targetSurface === "Navigation")).toBe(true);
+    expect(plan.some((item) => item.checkType === "interaction")).toBe(true);
+    expect(
+      plan.every((item) =>
+        item.changedFiles.includes("src/components/Header.tsx"),
+      ),
+    ).toBe(true);
+  });
+
+  it("uses a safe fallback when no rule matches", () => {
+    const plan = createDeterministicPlan(
+      [file("src/components/Widget.tsx")],
+      ["/"],
+      16,
+    );
+    expect(plan.map((item) => item.checkType)).toEqual([
+      "layout",
+      "runtime",
+      "accessibility",
+    ]);
+  });
   it("does not confuse filename fragments with actual risk names", () => {
     for (const filename of ["src/ui/Cardigan.tsx", "src/components/Statement.ts", "src/ui/Menuet.tsx", "src/ui/Naval.tsx"]) {
       const plan = createDeterministicPlan([file(filename)], ["/"], 16);
@@ -63,34 +93,4 @@ const file = (filename: string, patch = "") => ({
     expect(new Set(plan.map((item) => item.route)).size).toBe(3);
   });
 
-});
-
-describe("risk mapper", () => {
-  it("targets navigation changes instead of unrelated checks", () => {
-    const plan = createDeterministicPlan(
-      [file("src/components/Header.tsx", "+ <button aria-expanded>")],
-      ["/"],
-      16,
-    );
-    expect(plan.some((item) => item.targetSurface === "Navigation")).toBe(true);
-    expect(plan.some((item) => item.checkType === "interaction")).toBe(true);
-    expect(
-      plan.every((item) =>
-        item.changedFiles.includes("src/components/Header.tsx"),
-      ),
-    ).toBe(true);
-  });
-
-  it("uses a safe fallback when no rule matches", () => {
-    const plan = createDeterministicPlan(
-      [file("src/components/Widget.tsx")],
-      ["/"],
-      16,
-    );
-    expect(plan.map((item) => item.checkType)).toEqual([
-      "layout",
-      "runtime",
-      "accessibility",
-    ]);
-  });
 });
