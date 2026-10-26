@@ -1,0 +1,68 @@
+name: Temporary Marketplace report preview
+
+on:
+  push:
+    branches:
+      - docs/marketplace-onboarding-report-preview-20261026
+
+permissions:
+  contents: write
+
+jobs:
+  capture-report:
+    if: github.repository == 'tabitha-dev/TabbyGuard' && github.ref == 'refs/heads/docs/marketplace-onboarding-report-preview-20261026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Serve intentionally broken fixture
+        run: |
+          node examples/demo-site/server.mjs 4173 > /tmp/tabbyguard-marketplace-demo.log 2>&1 &
+          curl --retry 20 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:4173/overflow > /dev/null
+      - name: Produce real TabbyGuard report
+        run: |
+          node dist/index.js http://127.0.0.1:4173/overflow --routes /overflow --fail-on-severity none --screenshot-mode all --artifact-dir .tabbyguard-marketplace
+      - name: Capture actual visual report
+        shell: bash
+        run: |
+          mkdir -p docs/images
+          node --input-type=module <<'NODE'
+          import path from 'node:path';
+          import { pathToFileURL } from 'node:url';
+          import { chromium } from 'playwright-core';
+          const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+          try {
+            const page = await browser.newPage({
+              viewport: { width: 1440, height: 960 },
+              deviceScaleFactor: 1
+            });
+            await page.goto(pathToFileURL(path.resolve('.tabbyguard-marketplace/report.html')).href, {
+              waitUntil: 'load'
+            });
+            await page.screenshot({
+              path: 'docs/images/report-preview.png',
+              fullPage: false,
+              animations: 'disabled'
+            });
+            console.log('Created an authentic screenshot of the demo fixture report.');
+          } finally {
+            await browser.close();
+          }
+          NODE
+      - name: Commit verified screenshot on documentation branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images/report-preview.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Add real TabbyGuard report screenshot for Marketplace"
+            git push origin HEAD:docs/marketplace-onboarding-report-preview-20261026
+          fi
