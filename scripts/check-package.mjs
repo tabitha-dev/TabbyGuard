@@ -4,12 +4,18 @@ import fs from "node:fs";
 import path from "node:path";
 
 const cwd = process.cwd();
-const manifest = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8"));
-const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
-  cwd,
-  encoding: "utf8",
-  maxBuffer: 8 * 1024 * 1024,
-});
+const manifest = JSON.parse(
+  fs.readFileSync(path.join(cwd, "package.json"), "utf8"),
+);
+const result = spawnSync(
+  "npm",
+  ["pack", "--dry-run", "--json", "--ignore-scripts"],
+  {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 8 * 1024 * 1024,
+  },
+);
 assert.equal(result.status, 0, "npm pack dry-run failed: " + result.stderr);
 const packages = JSON.parse(result.stdout);
 assert.equal(packages.length, 1, "Expected one npm tarball");
