@@ -39,9 +39,16 @@ describe("risk mapper", () => {
     ]);
   });
   it("does not confuse filename fragments with actual risk names", () => {
-    for (const filename of ["src/ui/Cardigan.tsx", "src/components/Statement.ts", "src/ui/Menuet.tsx", "src/ui/Naval.tsx"]) {
+    for (const filename of [
+      "src/ui/Cardigan.tsx",
+      "src/components/Statement.ts",
+      "src/ui/Menuet.tsx",
+      "src/ui/Naval.tsx",
+    ]) {
       const plan = createDeterministicPlan([file(filename)], ["/"], 16);
-      expect(plan.every((item) => item.targetSurface === "Changed frontend surface")).toBe(true);
+      expect(
+        plan.every((item) => item.targetSurface === "Changed frontend surface"),
+      ).toBe(true);
     }
   });
 
@@ -56,20 +63,35 @@ describe("risk mapper", () => {
   });
 
   it("ignores context and removed-only diff markers", () => {
-    const patch = "@@ -1,2 +1,2 @@\n const label = 'menu';\n-<button aria-expanded>\n+<h1>Hi</h1>";
-    const plan = createDeterministicPlan([file("src/ui/Widget.tsx", patch)], ["/"], 16);
-    expect(plan.every((item) => item.targetSurface === "Changed frontend surface")).toBe(true);
+    const patch =
+      "@@ -1,2 +1,2 @@\n const label = 'menu';\n-<button aria-expanded>\n+<h1>Hi</h1>";
+    const plan = createDeterministicPlan(
+      [file("src/ui/Widget.tsx", patch)],
+      ["/"],
+      16,
+    );
+    expect(
+      plan.every((item) => item.targetSurface === "Changed frontend surface"),
+    ).toBe(true);
   });
 
   it("samples every requested route before checking one route repeatedly", () => {
     const routes = ["/", "/settings", "/pricing"];
-    const plan = createDeterministicPlan([file("src/ui/Header.tsx")], routes, 3);
+    const plan = createDeterministicPlan(
+      [file("src/ui/Header.tsx")],
+      routes,
+      3,
+    );
     expect(new Set(plan.map((item) => item.route)).size).toBe(3);
   });
 
   it("prevents earlier rules from starving independent risk categories", () => {
     const plan = createDeterministicPlan(
-      [file("src/ui/Header.tsx"), file("src/ui/CheckoutForm.tsx"), file("src/data/Query.ts")],
+      [
+        file("src/ui/Header.tsx"),
+        file("src/ui/CheckoutForm.tsx"),
+        file("src/data/Query.ts"),
+      ],
       ["/", "/checkout"],
       5,
     );
@@ -89,8 +111,11 @@ describe("risk mapper", () => {
   });
 
   it("applies the same route fairness to fallback PR checks", () => {
-    const plan = createDeterministicPlan([file("src/ui/Widget.tsx")], ["/", "/about", "/team"], 3);
+    const plan = createDeterministicPlan(
+      [file("src/ui/Widget.tsx")],
+      ["/", "/about", "/team"],
+      3,
+    );
     expect(new Set(plan.map((item) => item.route)).size).toBe(3);
   });
-
 });

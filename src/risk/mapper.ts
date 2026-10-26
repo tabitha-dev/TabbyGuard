@@ -24,7 +24,10 @@ function fileMatches(rule: RiskRule, file: ChangedFile): boolean {
   const matchesFilename = rule.patterns.some((pattern) => {
     // Patterns containing a literal dot target a file extension, not a token.
     if (pattern.source.includes("\\.")) return pattern.test(file.filename);
-    const tokenPattern = new RegExp("^(?:" + pattern.source + ")$", pattern.flags);
+    const tokenPattern = new RegExp(
+      "^(?:" + pattern.source + ")$",
+      pattern.flags,
+    );
     return tokens.some((token) => tokenPattern.test(token));
   });
   if (matchesFilename) return true;
@@ -36,7 +39,8 @@ function fileMatches(rule: RiskRule, file: ChangedFile): boolean {
     .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
     .join("\n");
   return Boolean(
-    addedLines && rule.patchPatterns?.some((pattern) => pattern.test(addedLines)),
+    addedLines &&
+      rule.patchPatterns?.some((pattern) => pattern.test(addedLines)),
   );
 }
 
@@ -45,25 +49,31 @@ function routePriority(
   routes: string[],
   matched: ChangedFile[],
 ): string[] {
-  const haystack = matched.map((file) => file.filename).join(" ").toLowerCase();
+  const haystack = matched
+    .map((file) => file.filename)
+    .join(" ")
+    .toLowerCase();
   const hinted = routes.filter((route) => {
     const normalized = route.toLowerCase().replace(/^\//, "");
     return (
       (normalized !== "" && haystack.includes(normalized)) ||
-      Boolean(
-        rule.routeHints?.some((hint) => normalized.includes(hint)),
-      )
+      Boolean(rule.routeHints?.some((hint) => normalized.includes(hint)))
     );
   });
   return [...hinted, ...routes.filter((route) => !hinted.includes(route))];
 }
 
 function planKey(item: TestPlanItem): string {
-  return [item.route, item.viewport, item.checkType, item.targetSurface].join(":");
+  return [item.route, item.viewport, item.checkType, item.targetSurface].join(
+    ":",
+  );
 }
 
 /** Reserve coverage across routes and risk categories before filling depth. */
-function balancedPlan(candidates: Candidate[], maxChecks: number): TestPlanItem[] {
+function balancedPlan(
+  candidates: Candidate[],
+  maxChecks: number,
+): TestPlanItem[] {
   const unique: Candidate[] = [];
   const seen = new Set<string>();
   for (const candidate of candidates) {
@@ -73,7 +83,9 @@ function balancedPlan(candidates: Candidate[], maxChecks: number): TestPlanItem[
     unique.push(candidate);
   }
 
-  const routes = [...new Set(unique.map((candidate) => candidate.item.route ?? "/"))];
+  const routes = [
+    ...new Set(unique.map((candidate) => candidate.item.route ?? "/")),
+  ];
   const groups = [...new Set(unique.map((candidate) => candidate.group))];
   const selected: Candidate[] = [];
   const picked = new Set<string>();
@@ -82,13 +94,19 @@ function balancedPlan(candidates: Candidate[], maxChecks: number): TestPlanItem[
   const pick = (filter: (candidate: Candidate) => boolean): boolean => {
     const eligible = unique
       .map((candidate, index) => ({ candidate, index }))
-      .filter(({ candidate }) => !picked.has(planKey(candidate.item)) && filter(candidate));
-    eligible.sort((a, b) =>
-      count((entry) => entry.group === a.candidate.group) -
-        count((entry) => entry.group === b.candidate.group) ||
-      count((entry) => entry.item.checkType === a.candidate.item.checkType) -
-        count((entry) => entry.item.checkType === b.candidate.item.checkType) ||
-      a.index - b.index,
+      .filter(
+        ({ candidate }) =>
+          !picked.has(planKey(candidate.item)) && filter(candidate),
+      );
+    eligible.sort(
+      (a, b) =>
+        count((entry) => entry.group === a.candidate.group) -
+          count((entry) => entry.group === b.candidate.group) ||
+        count((entry) => entry.item.checkType === a.candidate.item.checkType) -
+          count(
+            (entry) => entry.item.checkType === b.candidate.item.checkType,
+          ) ||
+        a.index - b.index,
     );
     const chosen = eligible[0]?.candidate;
     if (!chosen || selected.length >= maxChecks) return false;
@@ -115,7 +133,8 @@ function balancedPlan(candidates: Candidate[], maxChecks: number): TestPlanItem[
     let changed = false;
     for (const route of routes) {
       if (selected.length >= maxChecks) break;
-      changed = pick((candidate) => (candidate.item.route ?? "/") === route) || changed;
+      changed =
+        pick((candidate) => (candidate.item.route ?? "/") === route) || changed;
     }
     if (!changed) break;
   }
@@ -127,7 +146,9 @@ export function createDeterministicPlan(
   routes: string[],
   maxChecks = 16,
 ): TestPlanItem[] {
-  const frontendFiles = changedFiles.filter((file) => FRONTEND_EXT.test(file.filename));
+  const frontendFiles = changedFiles.filter((file) =>
+    FRONTEND_EXT.test(file.filename),
+  );
   const requestedRoutes = [...new Set(routes.length ? routes : ["/"])];
   const candidates: Candidate[] = [];
 
@@ -141,7 +162,9 @@ export function createDeterministicPlan(
           candidates.push({
             group: rule.name,
             item: {
-              id: slugify(rule.name + "-" + route + "-" + viewport + "-" + checkType),
+              id: slugify(
+                rule.name + "-" + route + "-" + viewport + "-" + checkType,
+              ),
               targetSurface: rule.surface,
               route,
               viewport,
@@ -158,21 +181,26 @@ export function createDeterministicPlan(
 
   if (candidates.length === 0) {
     const names = frontendFiles.map((file) => file.filename);
-    const template: Array<Pick<TestPlanItem, "viewport" | "checkType" | "reason">> = [
+    const template: Array<
+      Pick<TestPlanItem, "viewport" | "checkType" | "reason">
+    > = [
       {
         viewport: "mobile",
         checkType: "layout",
-        reason: "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
+        reason:
+          "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
       },
       {
         viewport: "desktop",
         checkType: "runtime",
-        reason: "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
+        reason:
+          "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
       },
       {
         viewport: "desktop",
         checkType: "accessibility",
-        reason: "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
+        reason:
+          "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
       },
     ];
     for (const route of requestedRoutes) {
@@ -181,7 +209,9 @@ export function createDeterministicPlan(
           group: "fallback",
           item: {
             ...item,
-            id: slugify("fallback-" + route + "-" + item.viewport + "-" + item.checkType),
+            id: slugify(
+              "fallback-" + route + "-" + item.viewport + "-" + item.checkType,
+            ),
             targetSurface: "Changed frontend surface",
             route,
             changedFiles: names,
@@ -203,7 +233,9 @@ export function createStandalonePlan(
   const candidates: Candidate[] = [];
   for (const route of requestedRoutes) {
     const routeId = slugify(route === "/" ? "home" : route);
-    const items: Array<Pick<TestPlanItem, "viewport" | "checkType" | "reason">> = [
+    const items: Array<
+      Pick<TestPlanItem, "viewport" | "checkType" | "reason">
+    > = [
       {
         viewport: "mobile",
         checkType: "layout",
@@ -212,7 +244,8 @@ export function createStandalonePlan(
       {
         viewport: "mobile",
         checkType: "accessibility",
-        reason: "Standalone smoke test for serious automated accessibility issues.",
+        reason:
+          "Standalone smoke test for serious automated accessibility issues.",
       },
       {
         viewport: "desktop",

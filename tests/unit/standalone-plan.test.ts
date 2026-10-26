@@ -21,5 +21,4 @@ describe("standalone plan", () => {
     const plan = createStandalonePlan(["/", "/", "/about"], 2);
     expect(new Set(plan.map((item) => item.route)).size).toBe(2);
   });
-
 });
