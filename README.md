@@ -234,7 +234,7 @@ AI-assisted mode cannot invent findings, remove deterministic findings, or chang
 mode: deterministic
 ```
 
-No model key is required. Changed files and bounded diff context choose a small risk-oriented test plan, and browser evidence decides the result.
+No model key is required. Changed files and added diff lines select risk rules using whole filename tokens (including CamelCase), reducing accidental matches. The planner first covers distinct requested routes, then different risk categories, then fills the remaining `max-checks` budget. A budget smaller than the number of requested routes cannot cover every route. Browser evidence decides the result.
 
 ### Assisted — optional
 
@@ -303,7 +303,7 @@ When there is no pull request, TabbyGuard uses a bounded smoke plan per requeste
 - Desktop first-party network
 - Desktop keyboard progression
 
-In GitHub PR mode, changed files and bounded diff context continue to drive the more targeted risk mapper.
+In GitHub PR mode, changed files and bounded diff context drive the targeted risk mapper. The plan now distributes checks across changed surfaces and all requested routes instead of spending the budget on the first matching rule or route.
 
 ---
 

@@ -230449,12 +230449,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runAction = runAction;
 const core = __importStar(__nccwpck_require__(7484));
+const default_model_js_1 = __nccwpck_require__(99001);
 const github = __importStar(__nccwpck_require__(3228));
 const node_path_1 = __importDefault(require("node:path"));
-const run_js_1 = __nccwpck_require__(99011);
-const pr_context_js_1 = __nccwpck_require__(99014);
-const counts_js_1 = __nccwpck_require__(99016);
-const input_js_1 = __nccwpck_require__(99029);
+const run_js_1 = __nccwpck_require__(99012);
+const pr_context_js_1 = __nccwpck_require__(99015);
+const counts_js_1 = __nccwpck_require__(99017);
+const input_js_1 = __nccwpck_require__(99030);
 async function runAction() {
     const githubToken = (0, input_js_1.readInput)("github-token");
     const previewUrl = (0, input_js_1.readInput)("preview-url", true);
@@ -230489,7 +230490,7 @@ async function runAction() {
         mode,
         failOnSeverity: (0, input_js_1.readFailOnSeverity)(),
         openaiApiKey,
-        model: (0, input_js_1.readInput)("openai-model") || "gpt-5.6-terra",
+        model: (0, input_js_1.readInput)("openai-model") || default_model_js_1.DEFAULT_OPENAI_MODEL,
         artifactDir,
         browserChannel: (0, input_js_1.readInput)("browser-channel") || "chrome",
         screenshotMode: (0, input_js_1.readScreenshotMode)(),
@@ -230518,10 +230519,20 @@ async function runAction() {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DEFAULT_OPENAI_MODEL = void 0;
+/** One source of truth for the default optional assisted-mode model. */
+exports.DEFAULT_OPENAI_MODEL = "gpt-5.6-terra";
+
+/***/ }),
+/***/ 99002:
+/***/ ((module, exports, __nccwpck_require__) => {
+
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAssistedPlan = createAssistedPlan;
 exports.enrichFindings = enrichFindings;
-const test_plan_js_1 = __nccwpck_require__(99027);
-const fs_js_1 = __nccwpck_require__(99028);
+const test_plan_js_1 = __nccwpck_require__(99028);
+const fs_js_1 = __nccwpck_require__(99029);
 const planJsonSchema = {
     type: "object",
     additionalProperties: false,
@@ -230693,7 +230704,7 @@ async function enrichFindings(options) {
 }
 
 /***/ }),
-/***/ 99002:
+/***/ 99003:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -230714,13 +230725,13 @@ async function runA11yScan(page) {
 }
 
 /***/ }),
-/***/ 99003:
+/***/ 99004:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runInteractionProbe = runInteractionProbe;
-const selector_js_1 = __nccwpck_require__(99007);
+const selector_js_1 = __nccwpck_require__(99008);
 const MENU_SELECTORS = [
     'button[aria-label*="menu" i]',
     'button[aria-label*="navigation" i]',
@@ -230943,13 +230954,13 @@ async function runInteractionProbe(page, item) {
 }
 
 /***/ }),
-/***/ 99004:
+/***/ 99005:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runKeyboardProbe = runKeyboardProbe;
-const selector_js_1 = __nccwpck_require__(99007);
+const selector_js_1 = __nccwpck_require__(99008);
 async function visibleFocusableCount(page) {
     return page.evaluate(() => {
         const selector = 'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -230999,7 +231010,7 @@ async function runKeyboardProbe(page) {
 }
 
 /***/ }),
-/***/ 99005:
+/***/ 99006:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231074,7 +231085,7 @@ async function inspectLayout(page) {
 }
 
 /***/ }),
-/***/ 99006:
+/***/ 99007:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231086,13 +231097,13 @@ exports.runBrowserChecks = runBrowserChecks;
 const promises_1 = __importDefault(require("node:fs/promises"));
 const node_path_1 = __importDefault(require("node:path"));
 const playwright_core_1 = __nccwpck_require__(3219);
-const test_plan_js_1 = __nccwpck_require__(99027);
-const fs_js_1 = __nccwpck_require__(99028);
-const a11y_js_1 = __nccwpck_require__(99002);
-const interaction_js_1 = __nccwpck_require__(99003);
-const keyboard_js_1 = __nccwpck_require__(99004);
-const layout_js_1 = __nccwpck_require__(99005);
-const url_js_1 = __nccwpck_require__(99009);
+const test_plan_js_1 = __nccwpck_require__(99028);
+const fs_js_1 = __nccwpck_require__(99029);
+const a11y_js_1 = __nccwpck_require__(99003);
+const interaction_js_1 = __nccwpck_require__(99004);
+const keyboard_js_1 = __nccwpck_require__(99005);
+const layout_js_1 = __nccwpck_require__(99006);
+const url_js_1 = __nccwpck_require__(99010);
 async function ensureRunnerDirs(artifactDir) {
     await Promise.all(["screenshots", "snapshots", "traces", "logs", "a11y"].map((name) => promises_1.default.mkdir(node_path_1.default.join(artifactDir, name), { recursive: true })));
 }
@@ -231399,7 +231410,7 @@ async function runBrowserChecks(options) {
 }
 
 /***/ }),
-/***/ 99007:
+/***/ 99008:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231450,14 +231461,14 @@ async function readFocus(page) {
 }
 
 /***/ }),
-/***/ 99008:
+/***/ 99009:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
 /***/ }),
-/***/ 99009:
+/***/ 99010:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231479,7 +231490,7 @@ function resolveTargetUrl(previewUrl, route) {
 }
 
 /***/ }),
-/***/ 99010:
+/***/ 99011:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231490,9 +231501,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseCliArgs = parseCliArgs;
 exports.runCli = runCli;
 const node_path_1 = __importDefault(require("node:path"));
+const default_model_js_1 = __nccwpck_require__(99001);
 const node_child_process_1 = require("node:child_process");
 const node_util_1 = require("node:util");
-const run_js_1 = __nccwpck_require__(99011);
+const run_js_1 = __nccwpck_require__(99012);
 function usage() {
     return `TabbyGuard — evidence-driven frontend QA\n\nUsage:\n  tabbyguard <url> [options]\n\nOptions:\n  --routes <comma-separated>        Routes to test (default: /)\n  --fail-on-severity <level>        none|critical|high|medium|low (default: high)\n  --screenshot-mode <mode>          all|failures|none (default: all)\n  --browser-channel <channel>       Browser channel (default: chrome)\n  --max-checks <number>             Maximum checks, 1-24 (default: 16)\n  --artifact-dir <path>             Report/evidence directory (default: .tabbyguard)\n  --mode <mode>                     deterministic|assisted (default: deterministic)\n  --open                            Open report.html after the run\n  --help, -h                        Show this help\n\nAssisted mode reads OPENAI_API_KEY from the environment.\n`;
 }
@@ -231623,7 +231635,7 @@ async function runCli(args = process.argv.slice(2)) {
     const run = await (0, run_js_1.runTabbyGuard)({
         ...options,
         openaiApiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
+        model: process.env.OPENAI_MODEL || default_model_js_1.DEFAULT_OPENAI_MODEL,
     });
     const counts = run.summary.findingCounts;
     process.stdout.write(`\n${run.summary.result.toUpperCase()} · ${run.summary.findings.length} finding${run.summary.findings.length === 1 ? "" : "s"}\n` +
@@ -231638,7 +231650,7 @@ async function runCli(args = process.argv.slice(2)) {
 }
 
 /***/ }),
-/***/ 99011:
+/***/ 99012:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231648,14 +231660,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runTabbyGuard = runTabbyGuard;
 const node_path_1 = __importDefault(require("node:path"));
-const openai_js_1 = __nccwpck_require__(99001);
-const run_check_js_1 = __nccwpck_require__(99006);
-const counts_js_1 = __nccwpck_require__(99016);
-const findings_js_1 = __nccwpck_require__(99017);
-const html_js_1 = __nccwpck_require__(99018);
-const mapper_js_1 = __nccwpck_require__(99022);
-const fs_js_1 = __nccwpck_require__(99028);
-const severity_js_1 = __nccwpck_require__(99030);
+const openai_js_1 = __nccwpck_require__(99002);
+const run_check_js_1 = __nccwpck_require__(99007);
+const counts_js_1 = __nccwpck_require__(99017);
+const findings_js_1 = __nccwpck_require__(99018);
+const html_js_1 = __nccwpck_require__(99019);
+const mapper_js_1 = __nccwpck_require__(99023);
+const fs_js_1 = __nccwpck_require__(99029);
+const severity_js_1 = __nccwpck_require__(99031);
 const promises_1 = __importDefault(require("node:fs/promises"));
 function serializeCheck(result) {
     return {
@@ -231775,7 +231787,7 @@ async function runTabbyGuard(options) {
 }
 
 /***/ }),
-/***/ 99012:
+/***/ 99013:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231819,12 +231831,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.finalizeAction = finalizeAction;
 const promises_1 = __importDefault(require("node:fs/promises"));
 const core = __importStar(__nccwpck_require__(7484));
-const pr_context_js_1 = __nccwpck_require__(99014);
-const pr_comment_js_1 = __nccwpck_require__(99013);
-const markdown_js_1 = __nccwpck_require__(99020);
-const step_summary_js_1 = __nccwpck_require__(99021);
-const run_summary_js_1 = __nccwpck_require__(99026);
-const input_js_1 = __nccwpck_require__(99029);
+const pr_context_js_1 = __nccwpck_require__(99015);
+const pr_comment_js_1 = __nccwpck_require__(99014);
+const markdown_js_1 = __nccwpck_require__(99021);
+const step_summary_js_1 = __nccwpck_require__(99022);
+const run_summary_js_1 = __nccwpck_require__(99027);
+const input_js_1 = __nccwpck_require__(99030);
 function emitAnnotations(summary) {
     for (const finding of summary.findings.slice(0, 12)) {
         const message = `${finding.title}: ${finding.summary}`;
@@ -231858,7 +231870,7 @@ async function finalizeAction() {
 }
 
 /***/ }),
-/***/ 99013:
+/***/ 99014:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231935,7 +231947,7 @@ async function postOrUpdatePrComment(client, context, body, marker) {
 }
 
 /***/ }),
-/***/ 99014:
+/***/ 99015:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -231978,7 +231990,7 @@ exports.getCurrentRunContext = getCurrentRunContext;
 exports.getChangedFiles = getChangedFiles;
 const core = __importStar(__nccwpck_require__(7484));
 const github = __importStar(__nccwpck_require__(3228));
-const change_js_1 = __nccwpck_require__(99024);
+const change_js_1 = __nccwpck_require__(99025);
 function getOctokit(token) {
     return github.getOctokit(token);
 }
@@ -232035,7 +232047,7 @@ async function getChangedFiles(client, context) {
 }
 
 /***/ }),
-/***/ 99015:
+/***/ 99016:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232075,8 +232087,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__nccwpck_require__(7484));
 const action_js_1 = __nccwpck_require__(99000);
-const cli_js_1 = __nccwpck_require__(99010);
-const finalize_js_1 = __nccwpck_require__(99012);
+const cli_js_1 = __nccwpck_require__(99011);
+const finalize_js_1 = __nccwpck_require__(99013);
 async function main() {
     const entry = process.env.TABBYGUARD_ENTRY || "cli";
     if (entry === "action") {
@@ -232102,7 +232114,7 @@ main().catch((error) => {
 });
 
 /***/ }),
-/***/ 99016:
+/***/ 99017:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232128,13 +232140,13 @@ function countFindings(findings) {
 }
 
 /***/ }),
-/***/ 99017:
+/***/ 99018:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeDeterministically = summarizeDeterministically;
-const fs_js_1 = __nccwpck_require__(99028);
+const fs_js_1 = __nccwpck_require__(99029);
 function confidence(result, extra = []) {
     const reasons = [
         `Browser check reproduced a concrete ${result.item.checkType} signal.`,
@@ -232364,7 +232376,7 @@ function summarizeDeterministically(results) {
 }
 
 /***/ }),
-/***/ 99018:
+/***/ 99019:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232776,7 +232788,7 @@ function renderHtmlReport(summary) {
 }
 
 /***/ }),
-/***/ 99019:
+/***/ 99020:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232806,13 +232818,13 @@ function safeHttpLink(value) {
 }
 
 /***/ }),
-/***/ 99020:
+/***/ 99021:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.renderPrComment = renderPrComment;
-const markdown_escape_js_1 = __nccwpck_require__(99019);
+const markdown_escape_js_1 = __nccwpck_require__(99020);
 function escapeTable(value) {
     return (0, markdown_escape_js_1.escapeMarkdown)(value);
 }
@@ -232885,7 +232897,7 @@ function renderPrComment(summary, marker = "<!-- tabbyguard-review -->", artifac
 }
 
 /***/ }),
-/***/ 99021:
+/***/ 99022:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -232925,7 +232937,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeStepSummary = writeStepSummary;
 const core = __importStar(__nccwpck_require__(7484));
-const markdown_escape_js_1 = __nccwpck_require__(99019);
+const markdown_escape_js_1 = __nccwpck_require__(99020);
 async function writeStepSummary(summary, options = {}) {
     const lines = [
         `# TabbyGuard — ${summary.result.toUpperCase()}`,
@@ -232963,177 +232975,241 @@ async function writeStepSummary(summary, options = {}) {
 }
 
 /***/ }),
-/***/ 99022:
+/***/ 99023:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createDeterministicPlan = createDeterministicPlan;
 exports.createStandalonePlan = createStandalonePlan;
-const fs_js_1 = __nccwpck_require__(99028);
-const rules_js_1 = __nccwpck_require__(99023);
+const fs_js_1 = __nccwpck_require__(99029);
+const rules_js_1 = __nccwpck_require__(99024);
 const FRONTEND_EXT = /\.(tsx|jsx|ts|js|vue|svelte|css|scss|sass|html|mdx)$/i;
-function fileMatches(rule, file) {
-    if (rule.patterns.some((pattern) => pattern.test(file.filename)))
-        return true;
-    return Boolean(file.patch &&
-        rule.patchPatterns?.some((pattern) => pattern.test(file.patch ?? "")));
+/**
+ * Match complete filename tokens (including CamelCase component names) rather
+ * than substrings: "Statement.tsx" must not trigger the "state" rule.
+ */
+function filenameTokens(filename) {
+    return filename
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+        .split(/[^a-z0-9]+/i)
+        .filter(Boolean);
 }
-function pickRoute(rule, routes, matched) {
-    if (routes.length === 1)
-        return routes[0];
+function fileMatches(rule, file) {
+    const tokens = filenameTokens(file.filename);
+    const matchesFilename = rule.patterns.some((pattern) => {
+        // Patterns containing a literal dot target a file extension, not a token.
+        if (pattern.source.includes("\\."))
+            return pattern.test(file.filename);
+        const tokenPattern = new RegExp("^(?:" + pattern.source + ")$", pattern.flags);
+        return tokens.some((token) => tokenPattern.test(token));
+    });
+    if (matchesFilename)
+        return true;
+    // GitHub's diff includes context and removed lines. Only added lines should
+    // trigger an additional behavior rule.
+    const addedLines = (file.patch ?? "")
+        .split("\n")
+        .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+        .join("\n");
+    return Boolean(addedLines &&
+        rule.patchPatterns?.some((pattern) => pattern.test(addedLines)));
+}
+function routePriority(rule, routes, matched) {
     const haystack = matched
         .map((file) => file.filename)
         .join(" ")
         .toLowerCase();
-    const hinted = routes.find((route) => {
+    const hinted = routes.filter((route) => {
         const normalized = route.toLowerCase().replace(/^\//, "");
-        if (normalized && haystack.includes(normalized))
-            return true;
-        return rule.routeHints?.some((hint) => normalized.includes(hint) || haystack.includes(hint));
+        return ((normalized !== "" && haystack.includes(normalized)) ||
+            Boolean(rule.routeHints?.some((hint) => normalized.includes(hint))));
     });
-    return hinted ?? routes[0] ?? "/";
+    return [...hinted, ...routes.filter((route) => !hinted.includes(route))];
 }
-function dedupe(plan) {
+function planKey(item) {
+    return [item.route, item.viewport, item.checkType, item.targetSurface].join(":");
+}
+/** Reserve coverage across routes and risk categories before filling depth. */
+function balancedPlan(candidates, maxChecks) {
+    const unique = [];
     const seen = new Set();
-    return plan.filter((item) => {
-        const key = `${item.route}:${item.viewport}:${item.checkType}:${item.targetSurface}`;
+    for (const candidate of candidates) {
+        const key = planKey(candidate.item);
         if (seen.has(key))
-            return false;
+            continue;
         seen.add(key);
+        unique.push(candidate);
+    }
+    const routes = [
+        ...new Set(unique.map((candidate) => candidate.item.route ?? "/")),
+    ];
+    const groups = [...new Set(unique.map((candidate) => candidate.group))];
+    const selected = [];
+    const picked = new Set();
+    const count = (test) => selected.filter(test).length;
+    const pick = (filter) => {
+        const eligible = unique
+            .map((candidate, index) => ({ candidate, index }))
+            .filter(({ candidate }) => !picked.has(planKey(candidate.item)) && filter(candidate));
+        eligible.sort((a, b) => count((entry) => entry.group === a.candidate.group) -
+            count((entry) => entry.group === b.candidate.group) ||
+            count((entry) => entry.item.checkType === a.candidate.item.checkType) -
+                count((entry) => entry.item.checkType === b.candidate.item.checkType) ||
+            a.index - b.index);
+        const chosen = eligible[0]?.candidate;
+        if (!chosen || selected.length >= maxChecks)
+            return false;
+        selected.push(chosen);
+        picked.add(planKey(chosen.item));
         return true;
-    });
+    };
+    // First ensure that every explicitly requested route gets at least one check
+    // when the user-provided budget allows it.
+    for (const route of routes) {
+        pick((candidate) => (candidate.item.route ?? "/") === route);
+    }
+    // Next ensure a change touching multiple risk categories is not represented
+    // only by the first rule in riskRules.
+    for (const group of groups) {
+        if (selected.length >= maxChecks)
+            break;
+        if (selected.some((candidate) => candidate.group === group))
+            continue;
+        pick((candidate) => candidate.group === group);
+    }
+    // Fill the remaining budget fairly, distributing checks by route, group and
+    // check type. The original order still breaks ties deterministically.
+    while (selected.length < maxChecks) {
+        let changed = false;
+        for (const route of routes) {
+            if (selected.length >= maxChecks)
+                break;
+            changed =
+                pick((candidate) => (candidate.item.route ?? "/") === route) || changed;
+        }
+        if (!changed)
+            break;
+    }
+    return selected.map((candidate) => candidate.item);
 }
 function createDeterministicPlan(changedFiles, routes, maxChecks = 16) {
     const frontendFiles = changedFiles.filter((file) => FRONTEND_EXT.test(file.filename));
-    const plan = [];
+    const requestedRoutes = [...new Set(routes.length ? routes : ["/"])];
+    const candidates = [];
     for (const rule of rules_js_1.riskRules) {
         const matched = frontendFiles.filter((file) => fileMatches(rule, file));
         if (matched.length === 0)
             continue;
-        const route = pickRoute(rule, routes, matched);
-        for (const viewport of rule.viewports) {
-            for (const checkType of rule.checks) {
-                const id = (0, fs_js_1.slugify)(`${rule.name}-${route}-${viewport}-${checkType}`);
-                plan.push({
-                    id,
-                    targetSurface: rule.surface,
-                    route,
-                    viewport,
-                    checkType,
-                    reason: rule.reason,
-                    changedFiles: matched.map((file) => file.filename),
-                    selectors: rule.selectors ?? [],
+        for (const route of routePriority(rule, requestedRoutes, matched)) {
+            for (const viewport of rule.viewports) {
+                for (const checkType of rule.checks) {
+                    candidates.push({
+                        group: rule.name,
+                        item: {
+                            id: (0, fs_js_1.slugify)(rule.name + "-" + route + "-" + viewport + "-" + checkType),
+                            targetSurface: rule.surface,
+                            route,
+                            viewport,
+                            checkType,
+                            reason: rule.reason,
+                            changedFiles: matched.map((file) => file.filename),
+                            selectors: rule.selectors ?? [],
+                        },
+                    });
+                }
+            }
+        }
+    }
+    if (candidates.length === 0) {
+        const names = frontendFiles.map((file) => file.filename);
+        const template = [
+            {
+                viewport: "mobile",
+                checkType: "layout",
+                reason: "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
+            },
+            {
+                viewport: "desktop",
+                checkType: "runtime",
+                reason: "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
+            },
+            {
+                viewport: "desktop",
+                checkType: "accessibility",
+                reason: "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
+            },
+        ];
+        for (const route of requestedRoutes) {
+            for (const item of template) {
+                candidates.push({
+                    group: "fallback",
+                    item: {
+                        ...item,
+                        id: (0, fs_js_1.slugify)("fallback-" + route + "-" + item.viewport + "-" + item.checkType),
+                        targetSurface: "Changed frontend surface",
+                        route,
+                        changedFiles: names,
+                        selectors: [],
+                    },
                 });
             }
         }
     }
-    if (plan.length === 0) {
-        const route = routes[0] ?? "/";
-        const names = frontendFiles.map((file) => file.filename);
-        const fallbackPlan = [
-            {
-                id: "fallback-mobile-layout",
-                targetSurface: "Changed frontend surface",
-                route,
-                viewport: "mobile",
-                checkType: "layout",
-                reason: "No specific risk rule matched, so TabbyGuard is running a mobile layout smoke check.",
-                changedFiles: names,
-                selectors: [],
-            },
-            {
-                id: "fallback-desktop-runtime",
-                targetSurface: "Changed frontend surface",
-                route,
-                viewport: "desktop",
-                checkType: "runtime",
-                reason: "No specific risk rule matched, so TabbyGuard is running a runtime smoke check.",
-                changedFiles: names,
-                selectors: [],
-            },
-            {
-                id: "fallback-desktop-a11y",
-                targetSurface: "Changed frontend surface",
-                route,
-                viewport: "desktop",
-                checkType: "accessibility",
-                reason: "No specific risk rule matched, so TabbyGuard is running an accessibility smoke check.",
-                changedFiles: names,
-                selectors: [],
-            },
-        ];
-        return fallbackPlan.slice(0, maxChecks);
-    }
-    return dedupe(plan).slice(0, maxChecks);
+    return balancedPlan(candidates, maxChecks);
 }
 function createStandalonePlan(routes, maxChecks = 16) {
-    const requestedRoutes = routes.length > 0 ? routes : ["/"];
-    const plan = [];
+    const requestedRoutes = [...new Set(routes.length ? routes : ["/"])];
+    const candidates = [];
     for (const route of requestedRoutes) {
-        const normalized = route || "/";
-        const routeId = (0, fs_js_1.slugify)(normalized === "/" ? "home" : normalized);
+        const routeId = (0, fs_js_1.slugify)(route === "/" ? "home" : route);
         const items = [
             {
-                id: `${routeId}-mobile-layout`,
-                targetSurface: "Rendered page",
-                route: normalized,
                 viewport: "mobile",
                 checkType: "layout",
                 reason: "Standalone smoke test for responsive overflow.",
-                changedFiles: [],
-                selectors: [],
             },
             {
-                id: `${routeId}-mobile-a11y`,
-                targetSurface: "Rendered page",
-                route: normalized,
                 viewport: "mobile",
                 checkType: "accessibility",
                 reason: "Standalone smoke test for serious automated accessibility issues.",
-                changedFiles: [],
-                selectors: [],
             },
             {
-                id: `${routeId}-desktop-runtime`,
-                targetSurface: "Rendered page",
-                route: normalized,
                 viewport: "desktop",
                 checkType: "runtime",
                 reason: "Standalone smoke test for browser runtime errors.",
-                changedFiles: [],
-                selectors: [],
             },
             {
-                id: `${routeId}-desktop-network`,
-                targetSurface: "Rendered page",
-                route: normalized,
                 viewport: "desktop",
                 checkType: "network",
                 reason: "Standalone smoke test for failed first-party requests.",
-                changedFiles: [],
-                selectors: [],
             },
             {
-                id: `${routeId}-desktop-keyboard`,
-                targetSurface: "Rendered page",
-                route: normalized,
                 viewport: "desktop",
                 checkType: "keyboard",
                 reason: "Standalone smoke test for basic keyboard focus progression.",
-                changedFiles: [],
-                selectors: [],
             },
         ];
-        plan.push(...items);
-        if (plan.length >= maxChecks)
-            break;
+        for (const item of items) {
+            candidates.push({
+                group: "standalone",
+                item: {
+                    ...item,
+                    id: routeId + "-" + item.viewport + "-" + item.checkType,
+                    targetSurface: "Rendered page",
+                    route,
+                    changedFiles: [],
+                    selectors: [],
+                },
+            });
+        }
     }
-    return plan.slice(0, maxChecks);
+    return balancedPlan(candidates, maxChecks);
 }
 
 /***/ }),
-/***/ 99023:
+/***/ 99024:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233259,7 +233335,7 @@ exports.riskRules = [
 ];
 
 /***/ }),
-/***/ 99024:
+/***/ 99025:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233287,7 +233363,7 @@ function boundedChanges(files, maxPerFile = 4_000, maxTotal = 16_000) {
 }
 
 /***/ }),
-/***/ 99025:
+/***/ 99026:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233327,16 +233403,16 @@ exports.FindingSchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99026:
+/***/ 99027:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RunSummarySchema = exports.VisualSnapshotSchema = exports.CheckRecordSchema = exports.CheckStatusSchema = exports.GitHubPRContextSchema = exports.RunContextSchema = void 0;
 const zod_1 = __nccwpck_require__(924);
-const change_js_1 = __nccwpck_require__(99024);
-const finding_js_1 = __nccwpck_require__(99025);
-const test_plan_js_1 = __nccwpck_require__(99027);
+const change_js_1 = __nccwpck_require__(99025);
+const finding_js_1 = __nccwpck_require__(99026);
+const test_plan_js_1 = __nccwpck_require__(99028);
 exports.RunContextSchema = zod_1.z.object({
     kind: zod_1.z.enum(["github", "standalone"]),
     previewUrl: zod_1.z.string().url(),
@@ -233412,7 +233488,7 @@ exports.RunSummarySchema = zod_1.z.object({
 });
 
 /***/ }),
-/***/ 99027:
+/***/ 99028:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233451,7 +233527,7 @@ function viewportSize(viewport) {
 }
 
 /***/ }),
-/***/ 99028:
+/***/ 99029:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233493,7 +233569,7 @@ async function listFilesRecursive(dir) {
 }
 
 /***/ }),
-/***/ 99029:
+/***/ 99030:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233598,7 +233674,7 @@ function readScreenshotMode() {
 }
 
 /***/ }),
-/***/ 99030:
+/***/ 99031:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -233741,7 +233817,7 @@ function severityIcon(severity) {
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(99015);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(99016);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()

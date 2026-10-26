@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Improved in next update
+
+- Check planning covers requested routes and distinct risk rules before exhausting the available check budget.
+- Changed-file matching uses complete filename tokens, reducing accidental rule matches.
+- Diff-only matching inspects added lines instead of unrelated context or removed lines.
+- Standalone and fallback PR plans distribute scarce checks across routes.
+- Assisted model fallback uses a shared source constant rather than duplicated code and action defaults.
+
 ### Fixed
 
 - Keyboard focus compared by element identity, not duplicate labels.
