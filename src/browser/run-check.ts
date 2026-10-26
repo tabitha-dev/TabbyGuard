@@ -3,6 +3,8 @@ import path from "node:path";
 import {
   chromium,
   type Browser,
+  type BrowserContext,
+  type Page,
   type ConsoleMessage,
   type Request,
   type Response,
@@ -125,6 +127,26 @@ function posixPath(...parts: string[]): string {
   return path.posix.join(...parts.map((part) => part.replaceAll("\\", "/")));
 }
 
+
+// Layout, runtime, and network checks do not intentionally change page state.
+// Axe injects scripts; keyboard and interaction probes manipulate the page.
+// Keep those probes isolated in fresh browser contexts.
+const PASSIVE_CHECKS = new Set(["layout", "runtime", "network"]);
+
+type SharedSession = {
+  context: BrowserContext;
+  page: Page;
+  traceRel: string;
+  remaining: number;
+  evidences: BrowserCheckResult["evidence"][];
+  messages: ConsoleRecord[];
+  errors: string[];
+  failures: NetworkFailure[];
+  notes: string[];
+  documentStatus?: number;
+  navigationError?: string;
+};
+
 export async function runBrowserChecks(
   options: BrowserRunOptions,
 ): Promise<BrowserCheckResult[]> {
@@ -132,6 +154,15 @@ export async function runBrowserChecks(
   const browser = await launchBrowser(options.browserChannel);
   const results: BrowserCheckResult[] = [];
   const capturedSnapshots = new Set<string>();
+  const sessionCounts = new Map<string, number>();
+  const sessionKey = (item: BrowserRunOptions["testPlan"][number]): string =>
+    JSON.stringify([resolveTargetUrl(options.previewUrl, item.route), item.viewport]);
+  for (const item of options.testPlan) {
+    if (!PASSIVE_CHECKS.has(item.checkType)) continue;
+    const key = sessionKey(item);
+    sessionCounts.set(key, (sessionCounts.get(key) ?? 0) + 1);
+  }
+  const sharedSessions = new Map<string, SharedSession>();
 
   try {
     for (const item of options.testPlan) {
@@ -139,7 +170,13 @@ export async function runBrowserChecks(
       const url = resolveTargetUrl(options.previewUrl, item.route);
       const size = viewportSize(item.viewport);
       const slug = slugify(`${item.id}-${item.viewport}-${item.checkType}`);
-      const traceRel = posixPath("traces", `${slug}.zip`);
+      const key = sessionKey(item);
+      const isShared = PASSIVE_CHECKS.has(item.checkType) && (sessionCounts.get(key) ?? 0) > 1;
+      const existingSession = isShared ? sharedSessions.get(key) : undefined;
+      const traceRel = existingSession?.traceRel ??
+        (isShared
+          ? posixPath("traces", slugify("shared-" + key) + ".zip")
+          : posixPath("traces", slug + ".zip"));
       const screenshotRel = posixPath("screenshots", `${slug}.png`);
       const logRel = posixPath("logs", `${slug}.json`);
       const a11yRel = posixPath("a11y", `${slug}.json`);
@@ -153,13 +190,23 @@ export async function runBrowserChecks(
       const logPath = path.join(options.artifactDir, logRel);
       const a11yPath = path.join(options.artifactDir, a11yRel);
       const snapshotPath = path.join(options.artifactDir, snapshotRel);
-      const consoleMessages: ConsoleRecord[] = [];
-      const pageErrors: string[] = [];
-      const networkFailures: NetworkFailure[] = [];
-      const notes: string[] = [];
+      const consoleMessages: ConsoleRecord[] = existingSession ? [...existingSession.messages] : [];
+      const pageErrors: string[] = existingSession ? [...existingSession.errors] : [];
+      const networkFailures: NetworkFailure[] = existingSession ? [...existingSession.failures] : [];
+      const notes: string[] = existingSession ? [...existingSession.notes] : [];
       const evidence: BrowserCheckResult["evidence"] = [];
-      const context = await browser.newContext({ viewport: size });
-      const page = await context.newPage();
+      const context = existingSession?.context ?? await browser.newContext({ viewport: size });
+      const page = existingSession?.page ?? await context.newPage();
+      const session: SharedSession | undefined = !isShared
+        ? undefined
+        : existingSession ?? {
+            context, page, traceRel,
+            remaining: sessionCounts.get(key) ?? 1,
+            evidences: [],
+            messages: consoleMessages, errors: pageErrors,
+            failures: networkFailures, notes,
+          };
+      if (session && !existingSession) sharedSessions.set(key, session);
       let axeViolations: BrowserCheckResult["axeViolations"] = [];
       let layout: BrowserCheckResult["layout"];
       let interaction: BrowserCheckResult["interaction"];
