@@ -27,6 +27,7 @@ jobs:
       - run: npm run verify
       - run: npm run check:package
       - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=high
       - name: Commit formatted release package check script
         shell: bash
         run: |
