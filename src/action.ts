@@ -1,9 +1,10 @@
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 import path from "node:path";
 import { runTabbyGuard } from "./core/run.js";
 import {
   getChangedFiles,
-  getCurrentPrContext,
+  getCurrentRunContext,
   getOctokit,
 } from "./github/pr-context.js";
 import { countFindings } from "./reporting/counts.js";
@@ -17,13 +18,23 @@ import {
 } from "./util/input.js";
 
 export async function runAction(): Promise<void> {
-  const githubToken = readInput("github-token", true);
+  const githubToken = readInput("github-token");
   const previewUrl = readInput("preview-url", true);
-  new URL(previewUrl);
+  const parsedUrl = new URL(previewUrl);
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error("preview-url must be an http(s) URL");
+  }
 
-  const context = getCurrentPrContext(previewUrl);
-  const client = getOctokit(githubToken);
-  const changedFiles = await getChangedFiles(client, context);
+  const context = getCurrentRunContext(previewUrl);
+  if (context.kind === "github" && !githubToken) {
+    throw new Error("github-token is required for pull request checks");
+  }
+  const changedFiles = context.kind === "github"
+    ? await getChangedFiles(getOctokit(githubToken), context)
+    : [];
+  if (context.kind === "standalone") {
+    core.info("No pull request on " + (github.context.eventName || "workflow") + " event. Running standalone smoke plan without PR review.");
+  }
   const artifactDir = path.resolve(readInput("artifact-dir") || ".tabbyguard");
   const mode = readMode();
   const openaiApiKey = readInput("openai-api-key");
