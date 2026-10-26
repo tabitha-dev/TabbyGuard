@@ -1,5 +1,5 @@
 name: "TabbyGuard"
-description: "Evidence-driven frontend QA for pull requests with visual reports"
+description: "Evidence-driven browser QA for GitHub pull requests and deployed URLs, with visual reports"
 author: "Tabitha Khadse"
 
 inputs:

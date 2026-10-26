@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-10-26
 
 ### Performance
 
@@ -9,7 +9,7 @@
 - Preserve check-specific logs, failure screenshots, and a complete shared navigation/inspection trace.
 - Add browser integration regression tests for navigation counts, trace evidence, error propagation, and HTTP errors.
 
-### Improved in next update
+### Improved
 
 - Check planning covers requested routes and distinct risk rules before exhausting the available check budget.
 - Changed-file matching uses complete filename tokens, reducing accidental rule matches.

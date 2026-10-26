@@ -107,7 +107,7 @@ The CLI writes:
 
 `--open` opens the generated report after the run when the operating system provides a normal file opener.
 
-> The repository is package-ready for npm publication. Until the npm package is published, the GitHub Action remains the supported public installation path.
+> TabbyGuard is available both as a GitHub Action and on npm. This repository's release workflow publishes the verified package and updates the GitHub version tags.
 
 ---
 
@@ -372,7 +372,7 @@ The repository includes controlled fixtures for:
 
 Unit tests cover the risk mapper, severity thresholds, URL resolution, standalone planning, deterministic finding generation, and HTML-report escaping.
 
-Integration tests use a real browser and validate the fixture behaviors plus visual snapshot capture.
+Integration tests use a real browser and validate controlled regressions, page-session isolation, reduced navigation counts, failure evidence, and visual snapshot capture. The package checker confirms the npm tarball contains the Action metadata, self-contained CLI bundle, license, and README while excluding non-distribution files.
 
 The repository self-test also verifies that the action generates `report.html` and exposes a real artifact URL.
 
@@ -381,6 +381,8 @@ Run everything expected before release:
 ```bash
 npm ci
 npm run verify
+npm run check:package
+npm audit --omit=dev --audit-level=high
 ```
 
 ---
@@ -389,7 +391,7 @@ npm run verify
 
 Release tags use semantic versioning (`v3.0.0`, `v3.0.1`, ...).
 
-A release-tag workflow runs the full verification suite and, only after validation succeeds, moves the corresponding major tag (`v3`) to that tested release. Consumers can therefore use:
+The release workflow checks the source, integration suite, bundled CLI, npm package contents, and production dependency audit. After npm publication succeeds, it creates an exact release tag and updates the moving major tag (`v3`) to the **same verified main-branch commit**. A GitHub Release is then created. Marketplace publication is a separate GitHub release setting, which the publisher must verify on GitHub. Consumers can therefore use:
 
 ```yaml
 uses: tabitha-dev/TabbyGuard@v3
