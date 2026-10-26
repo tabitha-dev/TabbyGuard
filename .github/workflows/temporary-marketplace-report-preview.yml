@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - docs/marketplace-onboarding-report-preview-20261026
+    paths:
+      - '.github/workflows/temporary-marketplace-report-preview.yml'
+      - 'examples/demo-site/marketplace/index.html'
 
 permissions:
   contents: write
@@ -22,6 +25,7 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - run: npm run format
       - name: Serve intentionally broken fixture
         run: |
           node examples/demo-site/server.mjs 4173 > /tmp/tabbyguard-marketplace-demo.log 2>&1 &
@@ -61,7 +65,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/images/report-preview.png
+          git add README.md docs/pr-workflow.md docs/images/report-preview.png examples/demo-site/marketplace/index.html .github/workflows/temporary-marketplace-report-preview.yml
           if ! git diff --cached --quiet; then
             git commit -m "Add real TabbyGuard report screenshot for Marketplace"
             git push origin HEAD:docs/marketplace-onboarding-report-preview-20261026
