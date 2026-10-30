@@ -10,6 +10,8 @@ Run targeted browser QA against a deployed website. Get a clear GitHub Actions s
 
 [GitHub Marketplace](https://github.com/marketplace/actions/tabbyguard) · [npm](https://www.npmjs.com/package/tabbyguard) · [Configuration](#inputs) · [Testing](docs/testing.md)
 
+Created and maintained by [Tabitha Khadse](https://code.tabitha.dev/). See her [engineering portfolio](https://code.tabitha.dev/#work) for related browser-QA and accessibility work.
+
 </div>
 
 ---
